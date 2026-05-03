@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingreso | SOC IA Defensiva</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --line: rgba(148, 163, 184, 0.16);
+            --text: #e7eef7;
+            --muted: #8ea3b8;
+        }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: grid;
+            place-items: center;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(57, 180, 255, 0.14), transparent 20%),
+                radial-gradient(circle at top right, rgba(255, 107, 107, 0.1), transparent 18%),
+                linear-gradient(180deg, #061019 0%, #07131d 48%, #071018 100%);
+            padding: 24px;
+        }
+        .shell {
+            width: min(1120px, 100%);
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+            gap: 18px;
+        }
+        .panel {
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(11, 23, 34, 0.9) 0%, rgba(7, 18, 29, 0.96) 100%);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+        }
+        .hero, .form-card { padding: 28px; }
+        .eyebrow {
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin: 14px 0 12px;
+        }
+        .copy, .muted { color: var(--muted); }
+        .feature-list {
+            display: grid;
+            gap: 14px;
+            margin-top: 24px;
+        }
+        .feature {
+            padding: 16px;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .form-control {
+            min-height: 50px;
+            background: rgba(6, 13, 20, 0.75);
+            border: 1px solid rgba(163, 184, 204, 0.14);
+            color: var(--text);
+        }
+        .form-control:focus {
+            background: rgba(6, 13, 20, 0.95);
+            color: var(--text);
+            border-color: rgba(57, 180, 255, 0.55);
+            box-shadow: 0 0 0 0.2rem rgba(57, 180, 255, 0.15);
+        }
+        .btn-soc, .btn-soc-outline {
+            min-height: 50px;
+            border-radius: 14px;
+            font-weight: 700;
+        }
+        .btn-soc {
+            border: 0;
+            color: #04111a;
+            background: linear-gradient(90deg, #2ea7ff, #4ad08d);
+        }
+        .btn-soc-outline {
+            border: 1px solid var(--line);
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.03);
+        }
+        @media (max-width: 900px) {
+            .shell { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section class="panel hero">
+            <div class="eyebrow"><i class="bi bi-shield-lock me-2"></i>Acceso restringido al laboratorio</div>
+            <h1 class="title">Ingresa al dashboard SOC con una experiencia mas clara y consistente.</h1>
+            <p class="copy">Autenticate para revisar alertas priorizadas, criticidad de activos, sugerencias operativas e historial de seguridad. Despues del login se solicitará un segundo factor TOTP.</p>
+
+            <div class="feature-list">
+                <article class="feature">
+                    <div class="fw-semibold mb-1">Confidencialidad reforzada</div>
+                    <div class="muted">Login, 2FA, control por roles, auditoria de accesos y bloqueo por intentos fallidos.</div>
+                </article>
+                <article class="feature">
+                    <div class="fw-semibold mb-1">Panel minimalista y operativo</div>
+                    <div class="muted">Las alertas criticas muestran hora, fecha, score IA, criticidad y sugerencias listas para actuar.</div>
+                </article>
+                <article class="feature">
+                    <div class="fw-semibold mb-1">Acceso por minimo privilegio</div>
+                    <div class="muted">Cada usuario solo ve el detalle compatible con su rol dentro del SOC.</div>
+                </article>
+            </div>
+        </section>
+
+        <section class="panel form-card">
+            <div class="eyebrow"><i class="bi bi-person-badge me-2"></i>Inicio de sesion</div>
+            <h2 class="title" style="font-size:2rem;">Ingreso al Agente</h2>
+            <p class="copy">Usa tus credenciales internas para continuar.</p>
+
+            {% if auth_error %}
+            <div class="alert alert-warning" role="alert">{{ auth_error }}</div>
+            {% elif form.non_field_errors %}
+            <div class="alert alert-warning" role="alert">
+                {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+            </div>
+            {% elif form.errors %}
+            <div class="alert alert-danger" role="alert">Se ingresaron credenciales incorrectas para esta cuenta.</div>
+            {% endif %}
+
+            {% if next and user.is_authenticated %}
+            <div class="alert alert-warning" role="alert">Tu usuario no tiene acceso a esta vista.</div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+                <div class="mb-3">
+                    <label for="id_username" class="form-label">Usuario</label>
+                    <input type="text" name="username" autofocus autocapitalize="none" autocomplete="username" maxlength="150" class="form-control" required id="id_username">
+                </div>
+                <div class="mb-3">
+                    <label for="id_password" class="form-label">Contrasena</label>
+                    <input type="password" name="password" autocomplete="current-password" class="form-control" required id="id_password">
+                </div>
+                <button type="submit" class="btn btn-soc w-100">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesion
+                </button>
+            </form>
+
+            <div class="d-grid gap-2 mt-3">
+                <a href="{% url 'password_help' %}" class="btn btn-soc-outline">Recuperar o cambiar contrasena</a>
+            </div>
+
+            <p class="muted mt-3 mb-0">Solo el personal autorizado del Agente puede acceder a esta consola.</p>
+        </section>
+    </main>
+</body>
+</html>

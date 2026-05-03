@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+{% load role_tags %}
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC IA Defensiva</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #1a1f3a;
+            --border-color: rgba(100, 116, 139, 0.3);
+            --text-primary: #e2e8f0;
+            --text-muted: #94a3b8;
+            --critical: #ff4757;
+            --warning: #ffa502;
+            --success: #2ed573;
+            --info: #0984e3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1638 100%);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+
+        .container-fluid {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* HEADER */
+        .soc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .soc-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .soc-title i {
+            color: var(--info);
+            font-size: 28px;
+        }
+
+        .soc-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--success);
+        }
+
+        .soc-status i {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* GRID LAYOUT */
+        .soc-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .soc-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* PANEL COMÚN */
+        .soc-panel {
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(26, 31, 58, 0.8) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+        }
+
+        .panel-header i {
+            font-size: 18px;
+            color: var(--info);
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        /* ALERTAS CRÍTICAS */
+        .alerts-container {
+            display: grid;
+            gap: 12px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            display: grid;
+            gap: 10px;
+            padding: 14px;
+            background: rgba(255, 71, 87, 0.08);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .alert-item:hover {
+            background: rgba(255, 71, 87, 0.12);
+            border-color: rgba(255, 71, 87, 0.5);
+        }
+
+        .alert-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 10px;
+        }
+
+        .alert-type {
+            display: inline-block;
+            padding: 4px 8px;
+            background: var(--critical);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: white;
+        }
+
+        .alert-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .alert-ip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #7dd3fc;
+        }
+
+        .alert-firma {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .no-alerts {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .no-alerts i {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        /* ACTIVOS CONECTADOS */
+        .assets-container {
+            display: grid;
+            gap: 12px;
+        }
+
+        .asset-item {
+            display: grid;
+            gap: 6px;
+            padding: 12px;
+            background: rgba(46, 213, 115, 0.06);
+            border: 1px solid rgba(46, 213, 115, 0.25);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .asset-item:hover {
+            background: rgba(46, 213, 115, 0.1);
+            border-color: rgba(46, 213, 115, 0.4);
+        }
+
+        .asset-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .asset-ip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #7dd3fc;
+        }
+
+        .asset-critical {
+            font-size: 11px;
+            color: var(--warning);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .no-assets {
+            padding: 30px 15px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .no-assets i {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+
+        /* SIDEBAR STATS */
+        .stats-container {
+            display: grid;
+            gap: 12px;
+        }
+
+        .stat-box {
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(9, 132, 227, 0.08), rgba(46, 213, 115, 0.04));
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--info);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* SCROLLBARS */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.4);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.6);
+        }
+
+        /* USER INFO */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--info), var(--success));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .dropdown-menu {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .dropdown-item {
+            color: var(--text-primary);
+            border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+        }
+
+        .dropdown-item:hover {
+            background: rgba(9, 132, 227, 0.15);
+            color: var(--text-primary);
+        }
+
+        .dropdown-item.danger {
+            color: var(--critical);
+        }
+
+        .dropdown-item.danger:hover {
+            background: rgba(255, 71, 87, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <!-- HEADER -->
+        <div class="soc-header">
+            <div class="soc-title">
+                <i class="bi bi-shield-lock"></i>
+                SOC IA Defensiva
+            </div>
+            <div style="display: flex; align-items: center; gap: 24px;">
+                <div class="soc-status">
+                    <i class="bi bi-circle-fill"></i>
+                    Sistema Activo
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar">{{ user.first_name|first|default:"U" }}</div>
+                    <div>
+                        <div style="font-weight: 600;">{{ user.get_full_name|default:user.username }}</div>
+                        <div style="color: var(--text-muted); font-size: 11px;">{{ role_label }}</div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{% url 'password_change' %}"><i class="bi bi-key me-2"></i> Cambiar contraseña</a></li>
+                            <li><a class="dropdown-item" href="{% url 'two_factor_setup' %}"><i class="bi bi-shield-check me-2"></i> Configurar 2FA</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN GRID -->
+        <div class="soc-grid">
+            <!-- ALERTAS CRÍTICAS (IZQUIERDA) -->
+            <div class="soc-panel">
+                <div class="panel-header">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div class="panel-title">Alertas Críticas (Últimas 24h)</div>
+                </div>
+                <div class="alerts-container">
+                    {% if alertas_criticas_recientes %}
+                        {% for alerta in alertas_criticas_recientes %}
+                            <div class="alert-item">
+                                <div class="alert-head">
+                                    <div class="alert-type">ALERTA</div>
+                                    <div class="alert-time">
+                                        <i class="bi bi-clock"></i>
+                                        {{ alerta.fecha|date:"d/m/Y H:i:s" }}
+                                    </div>
+                                </div>
+                                <div class="alert-ip">
+                                    <i class="bi bi-diagram-3"></i>
+                                    {{ alerta.ip_origen }} → {{ alerta.ip_destino }}
+                                </div>
+                                <div class="alert-firma">{{ alerta.firma|truncatewords:15 }}</div>
+                                <div style="display: flex; gap: 8px; margin-top: 6px;">
+                                    <span style="padding: 2px 6px; background: rgba(255, 71, 87, 0.2); border-radius: 3px; font-size: 10px; color: var(--critical);">
+                                        P: {{ alerta.prioridad_ia|floatformat:0 }}%
+                                    </span>
+                                    <span style="padding: 2px 6px; background: rgba(255, 165, 2, 0.2); border-radius: 3px; font-size: 10px; color: var(--warning);">
+                                        Sev: {{ alerta.severidad }}
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-alerts">
+                            <i class="bi bi-check2-circle"></i>
+                            Sin alertas críticas
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- SIDEBAR DERECHO -->
+            <div style="display: grid; grid-template-rows: auto auto; gap: 24px;">
+                <!-- ACTIVOS CONECTADOS -->
+                <div class="soc-panel">
+                    <div class="panel-header">
+                        <i class="bi bi-hdd-network"></i>
+                        <div class="panel-title">Activos Monitoreados</div>
+                    </div>
+                    <div class="assets-container">
+                        {% if activos_con_alertas %}
+                            {% for activo in activos_con_alertas %}
+                                <div class="asset-item">
+                                    <div class="asset-name">{{ activo.nombre }}</div>
+                                    <div class="asset-ip">{{ activo.ip }}</div>
+                                    {% if activo.criticidad >= 4 %}
+                                        <div class="asset-critical">⚠️ Crítico</div>
+                                    {% elif activo.criticidad >= 3 %}
+                                        <div class="asset-critical" style="color: var(--warning);">⚠️ Alto</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="no-assets">
+                                <i class="bi bi-inbox"></i>
+                                Sin activos con alertas
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- ESTADÍSTICAS -->
+                <div class="stats-container">
+                    <div class="stat-box">
+                        <div class="stat-label">Total Alertas</div>
+                        <div class="stat-value">{{ total_alertas }}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Prioridad Promedio</div>
+                        <div class="stat-value">{{ promedio_prioridad|floatformat:0 }}%</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Amenazas OSINT</div>
+                        <div class="stat-value">{{ osint_configured_count }}/4</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-refresh de alertas cada 30 segundos
+        setInterval(() => {
+            fetch('{% url "check_alerts" %}')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.nuevas_alertas > 0) {
+                        location.reload();
+                    }
+                });
+        }, 30000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+{% load role_tags %}
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC IA Defensiva</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #071018;
+            --bg-soft: #0d1924;
+            --panel: rgba(11, 23, 34, 0.9);
+            --panel-strong: rgba(7, 18, 29, 0.96);
+            --line: rgba(148, 163, 184, 0.16);
+            --text: #e7eef7;
+            --muted: #8ea3b8;
+            --critical: #ff6b6b;
+            --high: #ffb84d;
+            --medium: #5bc0ff;
+            --low: #46d191;
+            --neutral: #c4ced9;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(57, 180, 255, 0.14), transparent 20%),
+                radial-gradient(circle at top right, rgba(255, 107, 107, 0.1), transparent 18%),
+                linear-gradient(180deg, #061019 0%, #07131d 48%, #071018 100%);
+        }
+
+        .shell {
+            max-width: 1540px;
+            margin: 0 auto;
+            padding: 28px 20px 44px;
+        }
+
+        .panel {
+            background: linear-gradient(180deg, var(--panel) 0%, var(--panel-strong) 100%);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+        }
+
+        .hero {
+            padding: 28px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+            gap: 18px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .title {
+            margin: 14px 0 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 4vw, 3.4rem);
+            line-height: 1.02;
+        }
+
+        .copy {
+            max-width: 760px;
+            color: var(--muted);
+            font-size: 0.98rem;
+        }
+
+        .hero-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .meta-chip, .tone-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 38px;
+            padding: 0 14px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .btn-soc,
+        .btn-soc-outline,
+        .btn-soc-danger {
+            min-height: 46px;
+            padding: 0 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 700;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .btn-soc:hover,
+        .btn-soc-outline:hover,
+        .btn-soc-danger:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-soc {
+            border: 0;
+            color: #04111a;
+            background: linear-gradient(90deg, #2ea7ff, #4ad08d);
+        }
+
+        .btn-soc-outline {
+            border: 1px solid var(--line);
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .btn-soc-danger {
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            color: #ffd3d3;
+            background: rgba(255, 107, 107, 0.08);
+        }
+
+        .hero-side {
+            display: grid;
+            gap: 14px;
+        }
+
+        .side-card {
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .side-label {
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.72rem;
+            margin-bottom: 10px;
+        }
+
+        .side-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.45rem;
+            font-weight: 700;
+        }
+
+        .side-subvalue {
+            color: var(--muted);
+            margin-top: 6px;
+            font-size: 0.92rem;
+        }
+
+        .kpi-grid {
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .kpi-card {
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .kpi-label {
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.74rem;
+        }
+
+        .kpi-value {
+            margin-top: 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .kpi-copy {
+            color: var(--muted);
+            font-size: 0.88rem;
+            margin-top: 6px;
+        }
+
+        .layout {
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.95fr);
+            gap: 18px;
+        }
+
+        .section {
+            padding: 22px;
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.35rem;
+            margin: 0;
+        }
+
+        .section-copy {
+            color: var(--muted);
+            margin-top: 6px;
+            font-size: 0.92rem;
+        }
+
+        .alert-stream {
+            display: grid;
+            gap: 14px;
+        }
+
+        .alert-card {
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+        }
+
+        .alert-top,
+        .alert-meta,
+        .alert-footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .alert-top { margin-bottom: 12px; }
+        .alert-meta { margin-bottom: 14px; }
+
+        .alert-title {
+            margin: 0;
+            font-size: 1.03rem;
+            line-height: 1.4;
+        }
+
+        .alert-body {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .fact {
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .fact-label {
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.7rem;
+            margin-bottom: 6px;
+        }
+
+        .fact-value {
+            font-size: 0.96rem;
+            line-height: 1.45;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            color: #9fe4ff;
+        }
+
+        .tone-critical { color: #ffd7d7; background: rgba(255, 107, 107, 0.12); border-color: rgba(255, 107, 107, 0.18); }
+        .tone-high { color: #ffe3b1; background: rgba(255, 184, 77, 0.12); border-color: rgba(255, 184, 77, 0.18); }
+        .tone-medium { color: #ccecff; background: rgba(91, 192, 255, 0.12); border-color: rgba(91, 192, 255, 0.18); }
+        .tone-low { color: #d5ffeb; background: rgba(70, 209, 145, 0.12); border-color: rgba(70, 209, 145, 0.18); }
+        .tone-neutral { color: #edf2f7; background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.1); }
+
+        .sidebar-stack,
+        .asset-list,
+        .provider-list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .asset-card,
+        .provider-card,
+        .session-card {
+            padding: 16px;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .asset-head,
+        .provider-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .asset-name,
+        .provider-name {
+            font-weight: 700;
+        }
+
+        .asset-copy,
+        .provider-copy,
+        .session-copy,
+        .empty-copy {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .session-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .session-card .side-value {
+            font-size: 1.16rem;
+        }
+
+        .empty-state {
+            padding: 28px 16px;
+            border-radius: 18px;
+            border: 1px dashed var(--line);
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #4ad08d;
+            box-shadow: 0 0 0 6px rgba(74, 208, 141, 0.12);
+        }
+
+        .dropdown-menu {
+            background: #0b1620;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+        }
+
+        .dropdown-item {
+            color: var(--text);
+            padding: 10px 14px;
+        }
+
+        .dropdown-item:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .dropdown-divider {
+            border-color: var(--line);
+        }
+
+        .form-wrap {
+            display: grid;
+            gap: 10px;
+        }
+
+        .form-control {
+            min-height: 46px;
+            background: rgba(6, 13, 20, 0.75);
+            border: 1px solid rgba(163, 184, 204, 0.14);
+            color: var(--text);
+        }
+
+        .form-control:focus {
+            background: rgba(6, 13, 20, 0.95);
+            color: var(--text);
+            border-color: rgba(57, 180, 255, 0.55);
+            box-shadow: 0 0 0 0.2rem rgba(57, 180, 255, 0.15);
+        }
+
+        .muted-small {
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 1180px) {
+            .hero,
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .shell { padding: 18px 14px 32px; }
+            .hero, .section { padding: 20px; }
+            .kpi-grid,
+            .alert-body,
+            .session-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section class="panel hero">
+            <div>
+                <div class="eyebrow">
+                    <span class="status-dot"></span>
+                    Centro de monitoreo defensivo
+                </div>
+                <h1 class="title">Alertas criticas, prioridad IA y recomendaciones en una sola vista.</h1>
+                <p class="copy">Supervisa fecha y hora de deteccion, criticidad, puntaje y accion sugerida sin perder el enfoque del laboratorio. El panel mantiene la informacion sensible filtrada segun el rol del usuario.</p>
+
+                <div class="hero-meta">
+                    <span class="meta-chip"><i class="bi bi-person-badge"></i>{{ role_label }}</span>
+                    <span class="meta-chip"><i class="bi bi-globe2"></i>OSINT {{ osint_configured_count }}/4 activo</span>
+                    {% if ultima_alerta_critica %}
+                    <span class="meta-chip"><i class="bi bi-clock-history"></i>Ultima critica {{ ultima_alerta_critica.hora_display }}</span>
+                    {% else %}
+                    <span class="meta-chip"><i class="bi bi-shield-check"></i>Sin alertas criticas recientes</span>
+                    {% endif %}
+                    {% if not can_view_sensitive_data %}
+                    <span class="meta-chip"><i class="bi bi-eye-slash"></i>Vista minimizada por rol</span>
+                    {% endif %}
+                </div>
+
+                <div class="quick-actions">
+                    {% if is_admin_user %}
+                    <a href="{% url 'admin_user_access' %}" class="btn-soc"><i class="bi bi-people"></i>Gestionar usuarios</a>
+                    <a href="{% url 'security_events_dashboard' %}" class="btn-soc-outline"><i class="bi bi-journal-text"></i>Historial de accesos</a>
+                    {% endif %}
+                    <a href="{% url 'password_change' %}" class="btn-soc-outline"><i class="bi bi-key"></i>Seguridad de cuenta</a>
+                    <a href="{% url 'two_factor_setup' %}" class="btn-soc-outline"><i class="bi bi-phone"></i>Reconfigurar 2FA</a>
+                    <a href="{% url 'logout' %}" class="btn-soc-danger"><i class="bi bi-box-arrow-right"></i>Cerrar sesion</a>
+                </div>
+            </div>
+
+            <div class="hero-side">
+                <div class="side-card">
+                    <div class="side-label">Ultima deteccion critica</div>
+                    {% if ultima_alerta_critica %}
+                    <div class="side-value">{{ ultima_alerta_critica.fecha_display }}</div>
+                    <div class="side-subvalue">{{ ultima_alerta_critica.hora_display }} · Prioridad {{ ultima_alerta_critica.prioridad_ia|floatformat:0 }}%</div>
+                    <div class="side-subvalue">{{ ultima_alerta_critica.firma|truncatechars:88 }}</div>
+                    {% else %}
+                    <div class="side-value">Sin eventos</div>
+                    <div class="side-subvalue">No hay alertas criticas dentro de la ventana revisada.</div>
+                    {% endif %}
+                </div>
+                <div class="side-card">
+                    <div class="side-label">Contexto del operador</div>
+                    <div class="side-value">{{ user.get_full_name|default:user.username }}</div>
+                    <div class="side-subvalue">Usuario: {{ user.username }}</div>
+                    <div class="side-subvalue">Permisos sobre activos:
+                        {% if can_manage_assets %}edicion habilitada{% else %}solo lectura{% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="kpi-grid">
+            <article class="panel kpi-card">
+                <div class="kpi-label">Alertas criticas</div>
+                <div class="kpi-value">{{ total_alertas_criticas }}</div>
+                <div class="kpi-copy">Eventos con prioridad IA igual o superior a 80 dentro de la revision reciente.</div>
+            </article>
+            <article class="panel kpi-card">
+                <div class="kpi-label">Puntaje promedio</div>
+                <div class="kpi-value">{{ promedio_prioridad|floatformat:0 }}%</div>
+                <div class="kpi-copy">Promedio general calculado sobre las alertas procesadas por el motor.</div>
+            </article>
+            <article class="panel kpi-card">
+                <div class="kpi-label">Activos sensibles</div>
+                <div class="kpi-value">{{ criticidad_activos_alta }}</div>
+                <div class="kpi-copy">Activos con criticidad alta o critica vinculados a trafico observado.</div>
+            </article>
+            <article class="panel kpi-card">
+                <div class="kpi-label">Cobertura telemetria</div>
+                <div class="kpi-value">{{ total_alertas }}</div>
+                <div class="kpi-copy">Total historico de alertas almacenadas en la plataforma del laboratorio.</div>
+            </article>
+        </section>
+
+        <section class="layout">
+            <section class="panel section">
+                <div class="section-head">
+                    <div>
+                        <h2 class="section-title">Linea de alertas criticas</h2>
+                        <div class="section-copy">Cada tarjeta resume hora de deteccion, score IA, severidad observada y accion sugerida.</div>
+                    </div>
+                    <span class="meta-chip"><i class="bi bi-bell"></i>Autoactualizacion cada 30s</span>
+                </div>
+
+                <div class="alert-stream">
+                    {% for alerta in alertas_criticas_recientes %}
+                    <article class="alert-card">
+                        <div class="alert-top">
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="tone-badge tone-{{ alerta.priority_badge.tone }}">{{ alerta.priority_badge.label }}</span>
+                                <span class="tone-badge tone-{{ alerta.severity_badge.tone }}">Severidad {{ alerta.severity_badge.label }}</span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="meta-chip"><i class="bi bi-calendar3"></i>{{ alerta.fecha_display }}</span>
+                                <span class="meta-chip"><i class="bi bi-clock"></i>{{ alerta.hora_display }}</span>
+                            </div>
+                        </div>
+
+                        <h3 class="alert-title">{{ alerta.firma }}</h3>
+
+                        <div class="alert-meta">
+                            <span class="meta-chip"><i class="bi bi-stars"></i>Puntaje IA {{ alerta.prioridad_ia|floatformat:0 }}%</span>
+                            <span class="meta-chip"><i class="bi bi-radar"></i>OSINT {{ alerta.osint_score|floatformat:0 }}</span>
+                            {% if alerta.reputacion_osint != None %}
+                            <span class="meta-chip"><i class="bi bi-shield-exclamation"></i>Reputacion {{ alerta.reputacion_osint }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="alert-body">
+                            <div class="fact">
+                                <div class="fact-label">Origen y destino</div>
+                                <div class="fact-value mono">{{ alerta.ip_origen_display }} → {{ alerta.ip_destino_display }}</div>
+                            </div>
+                            <div class="fact">
+                                <div class="fact-label">Sugerencia operativa</div>
+                                <div class="fact-value">{{ alerta.recomendacion_display }}</div>
+                            </div>
+                            <div class="fact">
+                                <div class="fact-label">Explicacion del motor</div>
+                                <div class="fact-value">{{ alerta.explicacion_display }}</div>
+                            </div>
+                            <div class="fact">
+                                <div class="fact-label">Indicadores OSINT</div>
+                                <div class="fact-value">
+                                    VT maliciosos: {{ alerta.vt_malicious|default:"-" }} ·
+                                    Abuse confidence: {{ alerta.abuse_confidence|default:"-" }} ·
+                                    OTX pulses: {{ alerta.otx_pulse_count|default:"-" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert-footer">
+                            <span class="muted-small">ID alerta {{ alerta.id }}</span>
+                            {% if not can_view_sensitive_data %}
+                            <span class="muted-small">Algunos detalles fueron reducidos por politica de minimo privilegio.</span>
+                            {% endif %}
+                        </div>
+                    </article>
+                    {% empty %}
+                    <div class="empty-state">
+                        <i class="bi bi-shield-check" style="font-size: 2rem;"></i>
+                        <div class="section-title mt-3 mb-2" style="font-size: 1.12rem;">Sin alertas criticas para mostrar</div>
+                        <div class="empty-copy">Cuando Suricata y el motor de priorizacion publiquen una nueva alerta relevante, aparecera aqui con su hora, puntaje y recomendacion.</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <aside class="sidebar-stack">
+                <section class="panel section">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-title">Activos monitoreados</h2>
+                            <div class="section-copy">Criticidad del negocio y estado del inventario conectado a las alertas.</div>
+                        </div>
+                    </div>
+
+                    {% if can_manage_assets %}
+                    <form action="{% url 'agregar_activo' %}" method="post" class="form-wrap mb-4">
+                        {% csrf_token %}
+                        <input type="text" name="ip" class="form-control" placeholder="IP del activo" required>
+                        <input type="text" name="nombre" class="form-control" placeholder="Nombre del activo" required>
+                        <input type="number" name="criticidad" class="form-control" min="1" max="5" placeholder="Criticidad 1-5" required>
+                        <button type="submit" class="btn-soc" style="border:none;"><i class="bi bi-plus-circle"></i>Registrar activo</button>
+                    </form>
+                    {% else %}
+                    <div class="asset-card mb-4">
+                        <div class="asset-copy">Tu rol puede revisar el inventario, pero no modificar activos.</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="asset-list">
+                        {% for activo in activos_con_alertas %}
+                        <article class="asset-card">
+                            <div class="asset-head">
+                                <div>
+                                    <div class="asset-name">{{ activo.nombre }}</div>
+                                    <div class="asset-copy mono">{% if can_view_sensitive_data %}{{ activo.ip }}{% else %}{{ activo.ip|mask_ip }}{% endif %}</div>
+                                </div>
+                                {% if activo.criticidad >= 5 %}
+                                <span class="tone-badge tone-critical">Criticidad 5</span>
+                                {% elif activo.criticidad >= 4 %}
+                                <span class="tone-badge tone-high">Criticidad {{ activo.criticidad }}</span>
+                                {% elif activo.criticidad >= 3 %}
+                                <span class="tone-badge tone-medium">Criticidad {{ activo.criticidad }}</span>
+                                {% else %}
+                                <span class="tone-badge tone-low">Criticidad {{ activo.criticidad }}</span>
+                                {% endif %}
+                            </div>
+                        </article>
+                        {% empty %}
+                        <div class="empty-state">
+                            <div class="empty-copy">Todavia no hay activos relacionados con las alertas observadas.</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="panel section">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-title">Integraciones OSINT</h2>
+                            <div class="section-copy">Estado de proveedores y calidad de enriquecimiento disponible.</div>
+                        </div>
+                    </div>
+
+                    <div class="provider-list">
+                        {% for provider in osint_status %}
+                        <article class="provider-card">
+                            <div class="provider-head">
+                                <div>
+                                    <div class="provider-name">{{ provider.name }}</div>
+                                    <div class="provider-copy">
+                                        {% if provider.configured %}
+                                        Clave disponible y consumo habilitado.
+                                        {% elif provider.mode == "community" %}
+                                        Modo comunitario disponible sin clave dedicada.
+                                        {% else %}
+                                        Pendiente de configuracion en variables de entorno.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% if provider.configured %}
+                                <span class="tone-badge tone-low">Activa</span>
+                                {% elif provider.mode == "community" %}
+                                <span class="tone-badge tone-medium">Comunidad</span>
+                                {% else %}
+                                <span class="tone-badge tone-neutral">Sin API</span>
+                                {% endif %}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="panel section">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-title">Sesion actual</h2>
+                            <div class="section-copy">Estado operativo del analista y accesos disponibles en esta sesion.</div>
+                        </div>
+                    </div>
+
+                    <div class="session-grid">
+                        <article class="session-card">
+                            <div class="side-label">Cuenta</div>
+                            <div class="side-value">{{ user.username }}</div>
+                            <div class="session-copy">{{ user.get_full_name|default:"Sin nombre registrado" }}</div>
+                        </article>
+                        <article class="session-card">
+                            <div class="side-label">Rol activo</div>
+                            <div class="side-value">{{ role_label }}</div>
+                            <div class="session-copy">{% if can_manage_assets %}Puede modificar activos{% else %}Modo lectura{% endif %}</div>
+                        </article>
+                    </div>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let lastAlertId = {{ ultima_alerta_critica.id|default:"null" }};
+
+        setInterval(() => {
+            fetch('{% url "check_alerts" %}')
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.id && lastAlertId !== data.id) {
+                        location.reload();
+                    }
+                })
+                .catch(() => {});
+        }, 30000);
+    </script>
+</body>
+</html>
