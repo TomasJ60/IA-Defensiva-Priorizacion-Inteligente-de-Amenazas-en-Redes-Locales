@@ -3,6 +3,10 @@ from . import views
 
 urlpatterns = [
     path('', views.soc_dashboard, name='soc_dashboard'),
+    path('overview/', views.soc_dashboard, name='dashboard_overview'),
+    path('alertas/', views.dashboard_alertas, name='dashboard_alertas'),
+    path('activos/', views.dashboard_activos, name='dashboard_activos'),
+    path('osint/', views.dashboard_osint, name='dashboard_osint'),
     path('admin/accesos/', views.admin_user_access, name='admin_user_access'),
     path('admin/security-events/', views.security_events_dashboard, name='security_events_dashboard'),
     path('agregar_activo/', views.agregar_activo, name='agregar_activo'),

@@ -1,85 +1,117 @@
 <!DOCTYPE html>
-<html lang="es" data-bs-theme="dark">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificar 2FA | SOC IA Defensiva</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            min-height: 100vh;
-            margin: 0;
-            display: grid;
-            place-items: center;
-            color: #e7eef7;
-            font-family: 'Inter', sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(57, 180, 255, 0.14), transparent 20%),
-                radial-gradient(circle at top right, rgba(74, 208, 141, 0.12), transparent 18%),
-                linear-gradient(180deg, #061019 0%, #07131d 48%, #071018 100%);
-            padding: 24px;
-        }
-        .card {
-            width: min(560px, 100%);
-            padding: 28px;
-            border-radius: 24px;
-            border: 1px solid rgba(148, 163, 184, 0.16);
-            background: linear-gradient(180deg, rgba(11, 23, 34, 0.9) 0%, rgba(7, 18, 29, 0.96) 100%);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
-        }
-        .eyebrow { color: #8ea3b8; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; font-weight: 600; }
-        .title { font-family: 'Space Grotesk', sans-serif; font-size: 2.2rem; margin: 14px 0 12px; }
-        .copy { color: #8ea3b8; }
-        .form-control {
-            min-height: 50px;
-            background: rgba(6, 13, 20, 0.75);
-            border: 1px solid rgba(163, 184, 204, 0.14);
-            color: #e7eef7;
-        }
-        .form-control:focus {
-            background: rgba(6, 13, 20, 0.95);
-            color: #e7eef7;
-            border-color: rgba(57, 180, 255, 0.55);
-            box-shadow: 0 0 0 0.2rem rgba(57, 180, 255, 0.15);
-        }
-        .btn-soc, .btn-soc-outline {
-            min-height: 48px;
-            border-radius: 14px;
-            font-weight: 700;
-        }
-        .btn-soc { border: 0; color: #04111a; background: linear-gradient(90deg, #2ea7ff, #4ad08d); }
-        .btn-soc-outline { border: 1px solid rgba(148, 163, 184, 0.16); color: #e7eef7; background: rgba(255, 255, 255, 0.03); }
-    </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agente IA — Verificacion 2FA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b0f;--bg2:#0f1318;--bg3:#151b24;--bg4:#1b2232;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.16);
+  --text:#dde4ed;--muted:#5e6e82;--muted2:#8a9ab0;
+  --accent:#4a8fff;--accent2:#2e6de0;
+  --critical:#e8414a;--low:#3db882;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:12px;--r2:8px;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;
+  background-image:linear-gradient(rgba(74,143,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(74,143,255,.03) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;
+}
+body::after{
+  content:'';position:fixed;top:-10%;left:50%;transform:translateX(-50%);
+  width:500px;height:300px;border-radius:50%;background:radial-gradient(ellipse,rgba(74,143,255,.07) 0%,transparent 70%);
+  z-index:0;pointer-events:none;
+}
+.page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:40px}
+.brand-icon{
+  width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent2),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 24px rgba(74,143,255,.25);
+}
+.brand-name{font-size:20px;font-weight:600;letter-spacing:-.4px}
+.brand-sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
+.card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:36px 40px;width:100%;max-width:440px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+.shield-wrap{display:flex;align-items:center;justify-content:center;margin-bottom:24px}
+.shield{
+  width:72px;height:72px;border-radius:50%;background:rgba(74,143,255,.1);border:2px solid rgba(74,143,255,.25);
+  display:flex;align-items:center;justify-content:center;font-size:32px;position:relative;
+}
+.shield-ring,.shield-ring2{position:absolute;border-radius:50%}
+.shield-ring{inset:-8px;border:1px solid rgba(74,143,255,.15);animation:ring-pulse 2.5s ease-in-out infinite}
+.shield-ring2{inset:-16px;border:1px solid rgba(74,143,255,.07);animation:ring-pulse 2.5s ease-in-out infinite .5s}
+@keyframes ring-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.04)}}
+.card-title{font-size:20px;font-weight:600;text-align:center;margin-bottom:6px;letter-spacing:-.3px}
+.card-sub{font-size:13px;color:var(--muted2);text-align:center;margin-bottom:24px;line-height:1.6}
+.alert-err{
+  background:rgba(232,65,74,.1);border:1px solid rgba(232,65,74,.25);border-radius:var(--r2);padding:10px 14px;margin-bottom:16px;
+  font-size:13px;color:var(--critical);display:flex;align-items:center;gap:8px;
+}
+.info-box{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;margin-bottom:16px;
+  font-size:12px;color:var(--muted2);line-height:1.6;display:flex;gap:10px;align-items:flex-start;
+}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--muted2);margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px}
+.field input{
+  width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:13px 14px;
+  color:var(--text);font-family:var(--mono);font-size:24px;text-align:center;letter-spacing:8px;outline:none;
+}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(74,143,255,.12)}
+.btn-main,.btn-secondary{
+  width:100%;border-radius:var(--r2);padding:13px;font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;
+}
+.btn-main{background:var(--accent);color:#fff;border:none;margin-top:18px}
+.btn-main:hover{background:var(--accent2)}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);margin-top:10px}
+</style>
 </head>
 <body>
-    <main class="card">
-        <div class="eyebrow"><i class="bi bi-shield-check me-2"></i>Segundo factor obligatorio</div>
-        <h1 class="title">Verifica tu acceso</h1>
-        <p class="copy">Introduce el codigo de 6 digitos generado por tu aplicacion autenticadora para terminar el ingreso al dashboard.</p>
+<div class="page">
+  <div class="brand">
+    <div class="brand-icon">🤖</div>
+    <div>
+      <div class="brand-name">Agente IA</div>
+      <div class="brand-sub">Acceso reforzado</div>
+    </div>
+  </div>
 
-        {% if error %}
-        <div class="alert alert-danger" role="alert">{{ error }}</div>
-        {% endif %}
+  <div class="card">
+    <div class="shield-wrap">
+      <div class="shield">🛡️<div class="shield-ring"></div><div class="shield-ring2"></div></div>
+    </div>
+    <div class="card-title">Verificacion en dos pasos</div>
+    <div class="card-sub">Introduce el codigo de tu aplicacion autenticadora para completar el acceso a la herramienta del analista.</div>
 
-        <div class="alert alert-secondary" role="alert">
-            Hora actual del servidor: <strong>{{ server_time|date:"Y-m-d H:i:s T" }}</strong>
-        </div>
+    {% if error %}
+    <div class="alert-err">⚠️ <span>{{ error }}</span></div>
+    {% endif %}
 
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label for="id_code" class="form-label">Codigo TOTP</label>
-                <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" class="form-control" maxlength="6" required id="id_code" placeholder="123456">
-            </div>
-            <button type="submit" class="btn btn-soc w-100">Validar y entrar</button>
-        </form>
+    <div class="info-box">
+      <span>⌚</span>
+      <span>Hora actual del servidor: <strong>{{ server_time|date:"Y-m-d H:i:s T" }}</strong></span>
+    </div>
 
-        <form method="post" action="{% url 'two_factor_reset' %}" class="mt-3">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-soc-outline w-100">Reconfigurar 2FA con un QR nuevo</button>
-        </form>
-    </main>
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label>Codigo de 6 digitos</label>
+        <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="123456">
+      </div>
+      <button type="submit" class="btn-main">Validar y entrar</button>
+    </form>
+
+    <form method="post" action="{% url 'two_factor_reset' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary">Reconfigurar 2FA con un QR nuevo</button>
+    </form>
+  </div>
+</div>
 </body>
 </html>

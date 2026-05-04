@@ -1,254 +1,163 @@
 <!DOCTYPE html>
-<html lang="es" data-bs-theme="dark">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurar 2FA | SOC IA Defensiva</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --line: rgba(148, 163, 184, 0.16);
-            --text: #e7eef7;
-            --muted: #8ea3b8;
-        }
-        body {
-            min-height: 100vh;
-            margin: 0;
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(57, 180, 255, 0.14), transparent 20%),
-                radial-gradient(circle at top right, rgba(74, 208, 141, 0.12), transparent 18%),
-                linear-gradient(180deg, #061019 0%, #07131d 48%, #071018 100%);
-            padding: 24px;
-        }
-        .shell {
-            max-width: 1180px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.15fr);
-            gap: 18px;
-        }
-        .panel {
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            background: linear-gradient(180deg, rgba(11, 23, 34, 0.9) 0%, rgba(7, 18, 29, 0.96) 100%);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
-            padding: 28px;
-        }
-        .eyebrow {
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.78rem;
-            font-weight: 600;
-        }
-        .title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: clamp(2rem, 4vw, 3rem);
-            margin: 14px 0 12px;
-        }
-        .copy, .muted { color: var(--muted); }
-        .qr-shell {
-            display: grid;
-            place-items: center;
-            min-height: 290px;
-            padding: 18px;
-            border-radius: 20px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(231,243,255,0.98));
-        }
-        .qr-shell img { width: min(100%, 280px); height: auto; }
-        .meta-card, .step {
-            padding: 16px;
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.03);
-        }
-        .meta-grid, .timeline { display: grid; gap: 14px; margin-top: 16px; }
-        .meta-label {
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.72rem;
-            margin-bottom: 6px;
-        }
-        .mono { font-family: 'JetBrains Mono', monospace; color: #9fe4ff; word-break: break-all; }
-        .step-wrap {
-            display: grid;
-            grid-template-columns: 44px minmax(0, 1fr);
-            gap: 14px;
-            align-items: start;
-        }
-        .step-number {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            border: 1px solid rgba(57, 180, 255, 0.24);
-            background: rgba(57, 180, 255, 0.14);
-            color: #c8eeff;
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-        }
-        .progress-shell {
-            margin-top: 18px;
-            padding: 16px;
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.03);
-        }
-        .progress-track {
-            height: 10px;
-            border-radius: 999px;
-            overflow: hidden;
-            background: rgba(148, 163, 184, 0.14);
-        }
-        .progress-bar {
-            height: 100%;
-            width: 100%;
-            border-radius: 999px;
-            background: linear-gradient(90deg, #4ad08d, #2ea7ff, #ffb84d);
-            transition: width 0.9s linear;
-        }
-        .progress-meta {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            margin-top: 10px;
-            color: var(--muted);
-        }
-        .form-control {
-            min-height: 50px;
-            background: rgba(6, 13, 20, 0.75);
-            border: 1px solid rgba(163, 184, 204, 0.14);
-            color: var(--text);
-        }
-        .form-control:focus {
-            background: rgba(6, 13, 20, 0.95);
-            color: var(--text);
-            border-color: rgba(57, 180, 255, 0.55);
-            box-shadow: 0 0 0 0.2rem rgba(57, 180, 255, 0.15);
-        }
-        .btn-soc, .btn-soc-outline {
-            min-height: 50px;
-            border-radius: 14px;
-            font-weight: 700;
-        }
-        .btn-soc { border: 0; color: #04111a; background: linear-gradient(90deg, #2ea7ff, #4ad08d); }
-        .btn-soc-outline { border: 1px solid var(--line); color: var(--text); background: rgba(255, 255, 255, 0.03); }
-        @media (max-width: 920px) {
-            .shell { grid-template-columns: 1fr; }
-        }
-    </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agente IA — Configurar 2FA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b0f;--bg2:#0f1318;--bg3:#151b24;--bg4:#1b2232;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.16);
+  --text:#dde4ed;--muted:#5e6e82;--muted2:#8a9ab0;
+  --accent:#4a8fff;--accent2:#2e6de0;--low:#3db882;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:12px;--r2:8px;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;
+  background-image:linear-gradient(rgba(74,143,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(74,143,255,.03) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;
+}
+body::after{
+  content:'';position:fixed;top:-10%;left:50%;transform:translateX(-50%);
+  width:600px;height:380px;border-radius:50%;background:radial-gradient(ellipse,rgba(74,143,255,.07) 0%,transparent 70%);
+  z-index:0;pointer-events:none;
+}
+.page{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.shell{display:grid;grid-template-columns:minmax(320px,380px) minmax(0,520px);gap:18px;max-width:980px;width:100%}
+.panel{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:28px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.brand-icon{
+  width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent2),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 24px rgba(74,143,255,.25);
+}
+.brand-name{font-size:20px;font-weight:600;letter-spacing:-.4px}
+.brand-sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
+.title{font-size:24px;font-weight:600;letter-spacing:-.3px;margin-bottom:8px}
+.copy{font-size:13px;color:var(--muted2);margin-bottom:18px;line-height:1.6}
+.alert-err{
+  background:rgba(232,65,74,.1);border:1px solid rgba(232,65,74,.25);border-radius:var(--r2);padding:10px 14px;margin-bottom:16px;
+  font-size:13px;color:#e8414a;display:flex;align-items:center;gap:8px;
+}
+.qr-shell{
+  display:grid;place-items:center;background:#fff;border-radius:var(--r);padding:16px;min-height:280px;margin-top:10px;
+}
+.qr-shell img{width:min(100%,240px);height:auto}
+.meta-card,.step{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:14px;margin-top:12px;
+}
+.meta-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.mono{font-family:var(--mono);color:#c6ddff;word-break:break-all}
+.step-num{
+  width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(74,143,255,.15);color:var(--accent);font-weight:700;margin-right:10px;
+}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--muted2);margin:18px 0 7px;text-transform:uppercase;letter-spacing:.5px}
+.field input{
+  width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;
+  color:var(--text);font-family:var(--mono);font-size:18px;text-align:center;letter-spacing:4px;outline:none;
+}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(74,143,255,.12)}
+.progress-wrap{margin-top:18px}
+.progress-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px}
+.progress-bar{height:3px;background:var(--bg4);border-radius:2px}
+.progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width 1s linear}
+.btn-main,.btn-secondary{
+  width:100%;border-radius:var(--r2);padding:13px;font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;
+}
+.btn-main{background:var(--accent);color:#fff;border:none;margin-top:18px}
+.btn-main:hover{background:var(--accent2)}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);margin-top:10px}
+@media(max-width:920px){.shell{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-    <main class="shell">
-        <section class="panel">
-            <div class="eyebrow"><i class="bi bi-qr-code-scan me-2"></i>Configuracion del segundo factor</div>
-            <h1 class="title">Vincula Google Authenticator</h1>
-            <p class="copy">Escanea el QR, confirma que la cuenta aparezca en tu aplicacion y valida el primer codigo antes de entrar al dashboard.</p>
+<div class="page">
+  <div class="shell">
+    <section class="panel">
+      <div class="brand">
+        <div class="brand-icon">🤖</div>
+        <div>
+          <div class="brand-name">Agente IA</div>
+          <div class="brand-sub">Configuracion segura</div>
+        </div>
+      </div>
+      <div class="title">Vincula tu autenticador</div>
+      <div class="copy">Activa el segundo factor para proteger el acceso a la herramienta que ayuda a priorizar alertas.</div>
 
-            {% if error %}
-            <div class="alert alert-danger mt-3" role="alert">{{ error }}</div>
-            {% endif %}
+      {% if error %}
+      <div class="alert-err">⚠️ <span>{{ error }}</span></div>
+      {% endif %}
 
-            <div class="qr-shell mt-4">
-                <img src="{{ qr_data_uri }}" alt="QR para Google Authenticator">
-            </div>
+      <div class="qr-shell">
+        <img src="{{ qr_data_uri }}" alt="QR para Google Authenticator">
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Cuenta</div>
+        <div><strong>{{ issuer }}</strong></div>
+        <div style="color:var(--muted2)">{{ username }}</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Secreto de respaldo</div>
+        <div class="mono">{{ secret }}</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Hora del servidor</div>
+        <div class="mono">{{ server_time|date:"Y-m-d H:i:s T" }}</div>
+      </div>
+    </section>
 
-            <div class="meta-grid">
-                <div class="meta-card">
-                    <div class="meta-label">Cuenta</div>
-                    <div><strong>{{ issuer }}</strong></div>
-                    <div class="muted">{{ username }}</div>
-                </div>
-                <div class="meta-card">
-                    <div class="meta-label">Secreto de respaldo</div>
-                    <div class="mono">{{ secret }}</div>
-                </div>
-                <div class="meta-card">
-                    <div class="meta-label">Hora actual del servidor</div>
-                    <div class="mono">{{ server_time|date:"Y-m-d H:i:s T" }}</div>
-                </div>
-            </div>
-        </section>
+    <section class="panel">
+      <div class="title">Activa y valida</div>
+      <div class="copy">Sigue estos pasos para completar la configuracion sin salir del flujo del Agente.</div>
 
-        <section class="panel">
-            <div class="eyebrow"><i class="bi bi-signpost-split me-2"></i>Guia paso a paso</div>
-            <h2 class="title" style="font-size:2rem;">Configura y valida</h2>
-            <p class="copy">La experiencia sigue el mismo lenguaje visual del dashboard principal para que el flujo de acceso se sienta consistente.</p>
+      <div class="step"><span class="step-num">1</span>Abre Google Authenticator y pulsa el boton <strong>+</strong>.</div>
+      <div class="step"><span class="step-num">2</span>Escanea el QR o agrega el secreto manualmente si lo prefieres.</div>
+      <div class="step"><span class="step-num">3</span>Escribe el primer codigo de 6 digitos para activar el segundo factor.</div>
 
-            <div class="timeline">
-                <article class="step">
-                    <div class="step-wrap">
-                        <div class="step-number">1</div>
-                        <div>
-                            <div class="fw-semibold">Abre Google Authenticator</div>
-                            <div class="muted">Pulsa el boton <strong>+</strong> y elige <strong>Escanear codigo QR</strong>.</div>
-                        </div>
-                    </div>
-                </article>
-                <article class="step">
-                    <div class="step-wrap">
-                        <div class="step-number">2</div>
-                        <div>
-                            <div class="fw-semibold">Escanea el codigo</div>
-                            <div class="muted">Apunta la camara al QR mostrado en esta pagina. Si no puedes, usa el secreto de respaldo.</div>
-                        </div>
-                    </div>
-                </article>
-                <article class="step">
-                    <div class="step-wrap">
-                        <div class="step-number">3</div>
-                        <div>
-                            <div class="fw-semibold">Confirma el codigo de 6 digitos</div>
-                            <div class="muted">Espera si hace falta a un codigo nuevo y escribelo antes de que termine el contador.</div>
-                        </div>
-                    </div>
-                </article>
-            </div>
+      <div class="progress-wrap">
+        <div class="progress-lbl">
+          <span>Ventana actual del codigo</span>
+          <strong id="totp-seconds">30 s</strong>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="totp-bar"></div></div>
+      </div>
 
-            <div class="progress-shell">
-                <div class="progress-track"><div class="progress-bar" id="totp-bar"></div></div>
-                <div class="progress-meta">
-                    <span>Ventana actual del codigo TOTP</span>
-                    <strong id="totp-seconds">30 s</strong>
-                </div>
-            </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="field">
+          <label>Codigo TOTP</label>
+          <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="123456">
+        </div>
+        <button type="submit" class="btn-main">Validar y activar 2FA</button>
+      </form>
 
-            <form method="post" class="mt-4">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label for="id_code" class="form-label">Codigo TOTP</label>
-                    <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" class="form-control" maxlength="6" required id="id_code" placeholder="123456">
-                </div>
-                <button type="submit" class="btn btn-soc w-100">Validar y activar 2FA</button>
-            </form>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="regenerate">
+        <button type="submit" class="btn-secondary">Generar un QR nuevo</button>
+      </form>
+    </section>
+  </div>
+</div>
 
-            <form method="post" class="mt-3">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="regenerate">
-                <button type="submit" class="btn btn-soc-outline w-100">Generar un QR nuevo</button>
-            </form>
-        </section>
-    </main>
-
-    <script>
-        const bar = document.getElementById("totp-bar");
-        const seconds = document.getElementById("totp-seconds");
-
-        function updateTotpTimer() {
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = 30 - (now % 30);
-            seconds.textContent = `${remaining} s`;
-            bar.style.width = `${(remaining / 30) * 100}%`;
-        }
-
-        updateTotpTimer();
-        setInterval(updateTotpTimer, 1000);
-    </script>
+<script>
+const bar = document.getElementById('totp-bar');
+const seconds = document.getElementById('totp-seconds');
+function updateTotpTimer(){
+  const now = Math.floor(Date.now()/1000);
+  const remaining = 30 - (now % 30);
+  seconds.textContent = `${remaining} s`;
+  bar.style.width = `${(remaining/30)*100}%`;
+}
+updateTotpTimer();
+setInterval(updateTotpTimer,1000);
+</script>
 </body>
 </html>

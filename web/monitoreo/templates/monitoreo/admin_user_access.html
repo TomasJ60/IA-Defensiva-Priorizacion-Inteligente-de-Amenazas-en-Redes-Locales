@@ -1,288 +1,177 @@
 <!DOCTYPE html>
 {% load role_tags %}
-<html lang="es" data-bs-theme="dark">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion de accesos | SOC IA Defensiva</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #071018;
-            --panel: rgba(11, 23, 34, 0.9);
-            --panel-strong: rgba(7, 18, 29, 0.96);
-            --line: rgba(148, 163, 184, 0.16);
-            --text: #e7eef7;
-            --muted: #8ea3b8;
-        }
-        body {
-            margin: 0;
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(57, 180, 255, 0.14), transparent 20%),
-                radial-gradient(circle at top right, rgba(74, 208, 141, 0.09), transparent 18%),
-                linear-gradient(180deg, #061019 0%, #07131d 48%, #071018 100%);
-        }
-        .shell { max-width: 1540px; margin: 0 auto; padding: 28px 20px 44px; }
-        .panel {
-            background: linear-gradient(180deg, var(--panel) 0%, var(--panel-strong) 100%);
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
-        }
-        .hero, .content { padding: 26px; }
-        .eyebrow {
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.78rem;
-            font-weight: 600;
-        }
-        .title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: clamp(2rem, 4vw, 3rem);
-            margin: 14px 0 10px;
-        }
-        .copy, .muted { color: var(--muted); }
-        .toolbar, .layout { display: grid; gap: 18px; }
-        .toolbar {
-            grid-template-columns: auto auto 1fr;
-            align-items: center;
-            margin-top: 20px;
-        }
-        .layout {
-            grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.5fr);
-            margin-top: 18px;
-        }
-        .btn-soc, .btn-soc-outline {
-            min-height: 46px;
-            padding: 0 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            border-radius: 14px;
-            text-decoration: none;
-            font-weight: 700;
-        }
-        .btn-soc {
-            border: 0;
-            color: #04111a;
-            background: linear-gradient(90deg, #2ea7ff, #4ad08d);
-        }
-        .btn-soc-outline {
-            border: 1px solid var(--line);
-            color: var(--text);
-            background: rgba(255, 255, 255, 0.03);
-        }
-        .form-control, .form-select {
-            min-height: 46px;
-            background: rgba(6, 13, 20, 0.75);
-            border: 1px solid rgba(163, 184, 204, 0.14);
-            color: var(--text);
-        }
-        .form-control:focus, .form-select:focus {
-            background: rgba(6, 13, 20, 0.95);
-            color: var(--text);
-            border-color: rgba(57, 180, 255, 0.55);
-            box-shadow: 0 0 0 0.2rem rgba(57, 180, 255, 0.15);
-        }
-        .subcard {
-            padding: 18px;
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.03);
-        }
-        .subcard-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.2rem;
-            margin-bottom: 8px;
-        }
-        .table-wrap {
-            overflow: auto;
-            border-radius: 18px;
-            border: 1px solid var(--line);
-        }
-        table { width: 100%; min-width: 980px; margin: 0; }
-        thead th {
-            padding: 16px 14px;
-            background: rgba(255, 255, 255, 0.03);
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.72rem;
-            border-bottom: 1px solid var(--line);
-        }
-        tbody td {
-            padding: 16px 14px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-            background: rgba(255, 255, 255, 0.02);
-            vertical-align: middle;
-        }
-        .role-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 7px 12px;
-            border-radius: 999px;
-            border: 1px solid rgba(91, 192, 255, 0.2);
-            background: rgba(91, 192, 255, 0.12);
-            color: #bcecff;
-            font-size: 0.78rem;
-            font-weight: 700;
-        }
-        @media (max-width: 1200px) {
-            .toolbar, .layout { grid-template-columns: 1fr; }
-        }
-    </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agente IA — Gestion de accesos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#080b0f;--bg2:#0f1318;--bg3:#151b24;--bg4:#1b2232;
+  --border:rgba(255,255,255,0.06);--text:#dde4ed;--muted:#5e6e82;--muted2:#8a9ab0;
+  --accent:#4a8fff;--accent2:#2e6de0;--critical:#e8414a;--low:#3db882;--medium:#d4a843;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--r:10px;--r2:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
+nav{position:sticky;top:0;z-index:10;background:rgba(8,11,15,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;height:58px;padding:0 24px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600}
+.brand-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center}
+.content{padding:22px 24px;max-width:1440px;margin:0 auto}
+.header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
+.title{font-size:20px;font-weight:600}
+.sub{font-size:12px;color:var(--muted2);margin-top:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn,.btn-outline{
+  border-radius:var(--r2);padding:8px 14px;font-size:13px;display:inline-flex;align-items:center;gap:6px;text-decoration:none
+}
+.btn{background:var(--accent);color:#fff;border:none}
+.btn-outline{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.layout{display:grid;grid-template-columns:minmax(320px,380px) minmax(0,1fr);gap:14px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:16px;font-weight:500}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.field input,.field select{
+  width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:10px 12px;color:var(--text);outline:none
+}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--border)}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.role-badge{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(74,143,255,.12);border:1px solid rgba(74,143,255,.2);color:var(--accent);font-size:11px;font-weight:600}
+.muted{color:var(--muted2)}
+.stack{display:flex;gap:8px;flex-wrap:wrap}
+.small-btn{background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:var(--r2);padding:8px 12px;font-size:12px}
+.message{margin-bottom:12px;padding:10px 12px;border-radius:var(--r2);background:rgba(74,143,255,.1);border:1px solid rgba(74,143,255,.2)}
+@media(max-width:1080px){.layout{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-    <main class="shell">
-        <section class="panel hero">
-            <div class="eyebrow"><i class="bi bi-shield-lock me-2"></i>Administracion segura de usuarios</div>
-            <h1 class="title">Usuarios y roles del SOC</h1>
-            <p class="copy">Gestiona altas, roles, bloqueos y cambios de contrasena desde una vista operativa unificada con el estilo del dashboard principal.</p>
+<nav>
+  <div class="brand"><div class="brand-icon">🤖</div>Agente IA</div>
+  <div class="actions">
+    <a href="{% url 'soc_dashboard' %}" class="btn-outline">Volver al dashboard</a>
+    <a href="{% url 'security_events_dashboard' %}" class="btn">Historial de accesos</a>
+  </div>
+</nav>
 
-            <div class="toolbar">
-                <a href="{% url 'soc_dashboard' %}" class="btn-soc-outline"><i class="bi bi-arrow-left"></i>Volver al dashboard</a>
-                <a href="{% url 'security_events_dashboard' %}" class="btn-soc"><i class="bi bi-journal-text"></i>Ver Security Events</a>
-                <div class="muted">Solo el rol administrador puede entrar aqui y desbloquear cuentas protegidas por politica de acceso.</div>
-            </div>
-        </section>
+<div class="content">
+  <div class="header">
+    <div>
+      <div class="title">Gestion de usuarios y accesos</div>
+      <div class="sub">Administra cuentas, roles, bloqueos y contrasenas de la herramienta del analista.</div>
+    </div>
+  </div>
 
-        <section class="layout">
-            <aside class="panel content">
-                <div class="subcard">
-                    <div class="subcard-title">Crear usuario</div>
-                    <p class="muted mb-4">Asigna el rol correcto desde el inicio para mantener el principio de minimo privilegio.</p>
+  <div class="layout">
+    <section class="card">
+      <div class="card-title">Crear usuario</div>
+      {% if messages %}
+        {% for message in messages %}
+        <div class="message">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_user">
+        <div class="field">
+          <label>Usuario</label>
+          <input type="text" name="username" required>
+        </div>
+        <div class="field">
+          <label>Correo</label>
+          <input type="email" name="email">
+        </div>
+        <div class="field">
+          <label>Contrasena inicial</label>
+          <input type="password" name="password" required>
+        </div>
+        <div class="field">
+          <label>Rol</label>
+          <select name="role" required>
+            {% for role_key, role_name in role_options %}
+              {% if role_key != "none" %}
+              <option value="{{ role_key }}">{{ role_name }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn">Crear usuario</button>
+      </form>
+    </section>
 
-                    {% if messages %}
-                        {% for message in messages %}
-                        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-
-                    <form method="post" class="row g-3">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="create_user">
-                        <div class="col-12">
-                            <label class="form-label muted small">Usuario</label>
-                            <input type="text" name="username" class="form-control" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label muted small">Correo</label>
-                            <input type="email" name="email" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label muted small">Contrasena inicial</label>
-                            <input type="password" name="password" class="form-control" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label muted small">Rol</label>
-                            <select name="role" class="form-select" required>
-                                {% for role_key, role_name in role_options %}
-                                    {% if role_key != "none" %}
-                                    <option value="{{ role_key }}">{{ role_name }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <button type="submit" class="btn-soc w-100" style="border:none;"><i class="bi bi-person-plus"></i>Crear usuario</button>
-                        </div>
-                    </form>
-                </div>
-            </aside>
-
-            <section class="panel content">
-                <div class="subcard">
-                    <div class="subcard-title">Matriz de accesos</div>
-                    <p class="muted mb-4">Actualiza roles, desbloquea cuentas y cambia contrasenas sin salir del panel administrativo.</p>
-
-                    <div class="table-wrap">
-                        <table class="table align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Usuario</th>
-                                    <th>Correo</th>
-                                    <th>Rol actual</th>
-                                    <th>Estado acceso</th>
-                                    <th>Nuevo rol</th>
-                                    <th>Contrasena</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for managed_user in users %}
-                                <tr>
-                                    <td>
-                                        <div class="fw-semibold">{{ managed_user.username }}</div>
-                                        <div class="muted small">
-                                            {% if managed_user.is_superuser or managed_user.is_staff %}
-                                            Staff / Superuser
-                                            {% else %}
-                                            Usuario interno
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                    <td>{{ managed_user.email|default:"-" }}</td>
-                                    <td><span class="role-badge">{{ managed_user|role_label }}</span></td>
-                                    <td>
-                                        {% if lockouts|get_item:managed_user.username %}
-                                            {% with lockout=lockouts|get_item:managed_user.username %}
-                                            {% if lockout.admin_unlock_required %}
-                                            <div class="text-danger small mb-2">Bloqueo administrativo activo</div>
-                                            {% elif lockout.blocked_until %}
-                                            <div class="text-warning small mb-2">Bloqueado hasta {{ lockout.blocked_until|date:"Y-m-d H:i:s" }}</div>
-                                            {% else %}
-                                            <div class="text-info small mb-2">{{ lockout.failed_attempts }} intento(s) fallidos</div>
-                                            {% endif %}
-                                            <form method="post">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="unlock_access">
-                                                <input type="hidden" name="username" value="{{ managed_user.username }}">
-                                                <button type="submit" class="btn-soc-outline" style="min-height:38px;">Desbloquear</button>
-                                            </form>
-                                            {% endwith %}
-                                        {% else %}
-                                        <div class="text-success small">Sin bloqueos</div>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <form method="post" class="d-flex gap-2">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="action" value="update_role">
-                                            <input type="hidden" name="user_id" value="{{ managed_user.id }}">
-                                            <select name="role" class="form-select">
-                                                {% for role_key, role_name in role_options %}
-                                                <option value="{{ role_key }}" {% if managed_user|role_key == role_key %}selected{% endif %}>{{ role_name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                            <button type="submit" class="btn-soc-outline" style="min-height:46px;">Guardar</button>
-                                        </form>
-                                    </td>
-                                    <td>
-                                        <form method="post" class="d-flex gap-2">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="action" value="set_password">
-                                            <input type="hidden" name="user_id" value="{{ managed_user.id }}">
-                                            <input type="password" name="new_password" class="form-control" minlength="8" placeholder="Nueva contrasena" required>
-                                            <button type="submit" class="btn-soc-outline" style="min-height:46px;">Actualizar</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="6" class="text-center muted py-4">No hay usuarios registrados todavia.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        </section>
-    </main>
+    <section class="card" style="overflow-x:auto">
+      <div class="card-title">Matriz de accesos</div>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Correo</th>
+            <th>Rol actual</th>
+            <th>Estado</th>
+            <th>Nuevo rol</th>
+            <th>Contrasena</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for managed_user in users %}
+          <tr>
+            <td><strong>{{ managed_user.username }}</strong><div class="muted">{% if managed_user.is_superuser or managed_user.is_staff %}Staff / Superuser{% else %}Usuario interno{% endif %}</div></td>
+            <td>{{ managed_user.email|default:"-" }}</td>
+            <td><span class="role-badge">{{ managed_user|role_label }}</span></td>
+            <td>
+              {% if lockouts|get_item:managed_user.username %}
+                {% with lockout=lockouts|get_item:managed_user.username %}
+                  {% if lockout.admin_unlock_required %}
+                  <div class="muted" style="color:var(--critical)">Bloqueo administrativo activo</div>
+                  {% elif lockout.blocked_until %}
+                  <div class="muted" style="color:var(--medium)">Bloqueado hasta {{ lockout.blocked_until|date:"Y-m-d H:i:s" }}</div>
+                  {% else %}
+                  <div class="muted">{{ lockout.failed_attempts }} intento(s) fallidos</div>
+                  {% endif %}
+                  <form method="post" style="margin-top:8px">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="unlock_access">
+                    <input type="hidden" name="username" value="{{ managed_user.username }}">
+                    <button type="submit" class="small-btn">Desbloquear</button>
+                  </form>
+                {% endwith %}
+              {% else %}
+              <div class="muted" style="color:var(--low)">Sin bloqueos</div>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" class="stack">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_role">
+                <input type="hidden" name="user_id" value="{{ managed_user.id }}">
+                <select name="role" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px;color:var(--text)">
+                  {% for role_key, role_name in role_options %}
+                  <option value="{{ role_key }}" {% if managed_user|role_key == role_key %}selected{% endif %}>{{ role_name }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="small-btn">Guardar</button>
+              </form>
+            </td>
+            <td>
+              <form method="post" class="stack">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_password">
+                <input type="hidden" name="user_id" value="{{ managed_user.id }}">
+                <input type="password" name="new_password" minlength="8" placeholder="Nueva contrasena" required style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px;color:var(--text)">
+                <button type="submit" class="small-btn">Actualizar</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="muted">No hay usuarios registrados todavia.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>
 </body>
 </html>

@@ -1,0 +1,232 @@
+{% extends "monitoreo/base_dashboard.html" %}
+{% block title %}Agente IA — Alertas{% endblock %}
+{% block dashboard_content %}
+<style>
+.alert-details {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.alert-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alert-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.alert-score {
+  font-size: 30px;
+  font-weight: 700;
+  min-width: 68px;
+  line-height: 1;
+}
+
+.alert-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.alert-meta-item {
+  font-size: 12px;
+  color: var(--muted2);
+}
+
+.alert-firma {
+  font-weight: 600;
+  font-size: 15px;
+  word-break: break-word;
+}
+
+.alert-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alert-ml {
+  background: var(--bg4);
+  border-left: 3px solid var(--accent);
+  padding: 10px 12px;
+  border-radius: var(--r2);
+  margin: 10px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.alert-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  font-size: 12px;
+}
+
+.metric {
+  background: var(--bg4);
+  padding: 8px;
+  border-radius: var(--r2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric-label {
+  color: var(--muted2);
+  font-size: 11px;
+}
+
+.metric-value {
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
+.alert-osint {
+  background: var(--bg4);
+  padding: 10px 12px;
+  border-radius: var(--r2);
+  margin: 10px 0;
+  font-size: 12px;
+  color: var(--muted2);
+}
+
+.alert-recomendacion {
+  background: rgba(77, 166, 255, 0.1);
+  border-left: 3px solid var(--accent);
+  padding: 10px 12px;
+  border-radius: var(--r2);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.badge-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.badge-small {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-small.bc { background: rgba(232, 65, 74, 0.2); color: var(--critical); }
+.badge-small.bh { background: rgba(232, 119, 48, 0.2); color: var(--high); }
+.badge-small.bm { background: rgba(212, 168, 67, 0.2); color: var(--medium); }
+.badge-small.bl { background: rgba(61, 184, 130, 0.2); color: var(--low); }
+
+.alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.alert-index {
+  color: var(--muted2);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+@media (max-width: 720px) {
+  .alert-header {
+    flex-direction: column;
+  }
+}
+</style>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Alertas en tiempo real</div>
+    <div class="page-sub">Información completa incluyendo métricas de ML, puntajes OSINT y recomendaciones para análisis rápido.</div>
+  </div>
+</div>
+
+<div class="alert-details">
+  <ol class="alert-list">
+  {% for alerta in alertas_criticas_recientes %}
+  <li class="alert-card">
+    <div class="alert-header">
+      <div class="alert-score" style="color: {% if alerta.prioridad_ia >= 95 %}var(--critical){% elif alerta.prioridad_ia >= 85 %}var(--high){% elif alerta.prioridad_ia >= 70 %}var(--medium){% else %}var(--low){% endif %}">
+        {{ alerta.prioridad_ia|floatformat:0 }}
+      </div>
+      <div class="alert-main">
+        <div class="alert-index">Alerta {{ forloop.counter }}</div>
+        <div class="alert-firma">{{ alerta.firma }}</div>
+        <div class="alert-meta">
+          <div class="alert-meta-item"><strong>{{ alerta.fecha_display }}</strong></div>
+          <div class="alert-meta-item" style="font-family: var(--mono);">{{ alerta.hora_display }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="badge-row">
+      <span class="badge-small {% if alerta.severity_badge.tone == 'critical' %}bc{% elif alerta.severity_badge.tone == 'high' %}bh{% elif alerta.severity_badge.tone == 'medium' %}bm{% else %}bl{% endif %}">
+        {{ alerta.severity_badge.label }}
+      </span>
+      <span class="badge-small" style="background: var(--accent2); color: white;">
+        {% if alerta.prioridad_ia >= 95 %}Maxima{% elif alerta.prioridad_ia >= 85 %}Elevada{% elif alerta.prioridad_ia >= 70 %}Vigilancia{% else %}Reducida{% endif %}
+      </span>
+    </div>
+
+    <div class="alert-metrics">
+      <div class="metric">
+        <span class="metric-label">Origen:</span>
+        <span class="metric-value">{{ alerta.ip_origen_display }}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Destino:</span>
+        <span class="metric-value">{{ alerta.ip_destino_display }}</span>
+      </div>
+    </div>
+
+    {% if alerta.ml_metrics.accuracy %}
+    <div class="alert-ml">
+      <strong>ML:</strong> acc={{ alerta.ml_metrics.accuracy }}, f1={{ alerta.ml_metrics.f1 }}
+      {% if alerta.ml_metrics.risk_percentage %}<br>Riesgo: {{ alerta.ml_metrics.risk_percentage }}%{% endif %}
+      {% if alerta.ml_metrics.criticidad %}<br>Criticidad: {{ alerta.ml_metrics.criticidad }}/5{% endif %}
+      {% if alerta.ml_metrics.severidad %}<br>Severidad: {{ alerta.ml_metrics.severidad }}{% endif %}
+      {% if alerta.ml_metrics.osint_score %}<br>OSINT Score: {{ alerta.ml_metrics.osint_score }}{% endif %}
+      {% if alerta.ml_metrics.abuse_percentage %}<br>AbuseIPDB: {{ alerta.ml_metrics.abuse_percentage }}%{% endif %}
+      {% if alerta.ml_metrics.otx_pulses %}<br>OTX Pulses: {{ alerta.ml_metrics.otx_pulses }}{% endif %}
+      {% if alerta.ml_metrics.ajuste_contextual %}<br>Ajuste: {{ alerta.ml_metrics.ajuste_contextual|floatformat:1 }}{% endif %}
+    </div>
+    {% else %}
+    <div class="alert-ml">{{ alerta.explicacion_display }}</div>
+    {% endif %}
+
+    {% if alerta.osint_context %}
+    <div class="alert-osint">
+      <strong>OSINT:</strong> {{ alerta.osint_context }}
+    </div>
+    {% endif %}
+
+    <div class="alert-recomendacion">
+      <strong>Recomendación:</strong><br>
+      {{ alerta.recomendacion_display|truncatechars:200 }}
+    </div>
+  </li>
+  {% empty %}
+  <li style="text-align: center; padding: 40px; color: var(--muted); list-style: none;">
+    <div style="font-size: 16px; font-weight: 500;">No hay alertas disponibles en este momento</div>
+    <div style="font-size: 13px; color: var(--muted2); margin-top: 8px;">El sistema no registra eventos para mostrar.</div>
+  </li>
+  {% endfor %}
+  </ol>
+</div>
+{% endblock %}

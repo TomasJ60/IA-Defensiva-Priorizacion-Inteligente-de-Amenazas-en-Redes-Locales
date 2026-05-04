@@ -1,231 +1,118 @@
 <!DOCTYPE html>
-<html lang="es" data-bs-theme="dark">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Events | SOC IA Defensiva</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #071018;
-            --panel: rgba(11, 23, 34, 0.9);
-            --panel-strong: rgba(7, 18, 29, 0.96);
-            --line: rgba(148, 163, 184, 0.16);
-            --text: #e7eef7;
-            --muted: #8ea3b8;
-        }
-        body {
-            margin: 0;
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(57, 180, 255, 0.14), transparent 20%),
-                radial-gradient(circle at top right, rgba(255, 107, 107, 0.1), transparent 18%),
-                linear-gradient(180deg, #061019 0%, #07131d 48%, #071018 100%);
-        }
-        .shell { max-width: 1540px; margin: 0 auto; padding: 28px 20px 44px; }
-        .panel {
-            background: linear-gradient(180deg, var(--panel) 0%, var(--panel-strong) 100%);
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
-        }
-        .hero, .content { padding: 26px; }
-        .eyebrow {
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.78rem;
-            font-weight: 600;
-        }
-        .title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: clamp(2rem, 4vw, 3rem);
-            margin: 14px 0 10px;
-        }
-        .copy, .small-copy { color: var(--muted); }
-        .hero-tools, .kpis, .filters { display: grid; gap: 14px; }
-        .hero-tools { grid-template-columns: auto auto 1fr; align-items: center; margin-top: 20px; }
-        .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 18px; }
-        .kpi {
-            padding: 16px;
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.03);
-        }
-        .kpi-label {
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.72rem;
-        }
-        .kpi-value {
-            margin-top: 8px;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.9rem;
-            font-weight: 700;
-        }
-        .btn-soc, .btn-soc-outline {
-            min-height: 46px;
-            padding: 0 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            border-radius: 14px;
-            text-decoration: none;
-            font-weight: 700;
-        }
-        .btn-soc {
-            border: 0;
-            color: #04111a;
-            background: linear-gradient(90deg, #2ea7ff, #4ad08d);
-        }
-        .btn-soc-outline {
-            border: 1px solid var(--line);
-            color: var(--text);
-            background: rgba(255, 255, 255, 0.03);
-        }
-        .filters {
-            grid-template-columns: minmax(240px, 1fr) minmax(240px, 280px) auto;
-            margin-top: 20px;
-        }
-        .form-control, .form-select {
-            min-height: 46px;
-            background: rgba(6, 13, 20, 0.75);
-            border: 1px solid rgba(163, 184, 204, 0.14);
-            color: var(--text);
-        }
-        .form-control:focus, .form-select:focus {
-            background: rgba(6, 13, 20, 0.95);
-            color: var(--text);
-            border-color: rgba(57, 180, 255, 0.55);
-            box-shadow: 0 0 0 0.2rem rgba(57, 180, 255, 0.15);
-        }
-        .table-wrap {
-            overflow: auto;
-            border-radius: 18px;
-            border: 1px solid var(--line);
-        }
-        table { width: 100%; min-width: 1280px; margin: 0; }
-        thead th {
-            padding: 16px 14px;
-            background: rgba(255, 255, 255, 0.03);
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.72rem;
-            border-bottom: 1px solid var(--line);
-        }
-        tbody td {
-            padding: 16px 14px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-            background: rgba(255, 255, 255, 0.02);
-            vertical-align: top;
-        }
-        .badge-event {
-            display: inline-flex;
-            align-items: center;
-            padding: 7px 12px;
-            border-radius: 999px;
-            border: 1px solid rgba(91, 192, 255, 0.2);
-            background: rgba(91, 192, 255, 0.12);
-            color: #bcecff;
-            font-size: 0.78rem;
-            font-weight: 700;
-        }
-        .mono { font-family: 'JetBrains Mono', monospace; color: #a9e7ff; }
-        .muted-td { color: var(--muted); line-height: 1.5; }
-        @media (max-width: 1100px) {
-            .hero-tools, .kpis, .filters { grid-template-columns: 1fr; }
-        }
-    </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agente IA — Historial de accesos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#080b0f;--bg2:#0f1318;--bg3:#151b24;--bg4:#1b2232;
+  --border:rgba(255,255,255,0.06);--text:#dde4ed;--muted:#5e6e82;--muted2:#8a9ab0;
+  --accent:#4a8fff;--accent2:#2e6de0;--critical:#e8414a;--low:#3db882;--medium:#d4a843;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--r:10px;--r2:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
+nav{position:sticky;top:0;z-index:10;background:rgba(8,11,15,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;height:58px;padding:0 24px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600}
+.brand-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center}
+.content{padding:22px 24px;max-width:1440px;margin:0 auto}
+.header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
+.title{font-size:20px;font-weight:600}
+.sub{font-size:12px;color:var(--muted2);margin-top:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn,.btn-outline{
+  border-radius:var(--r2);padding:8px 14px;font-size:13px;display:inline-flex;align-items:center;gap:6px;text-decoration:none
+}
+.btn{background:var(--accent);color:#fff;border:none}
+.btn-outline{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.mc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.mc-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.mc-val{font-size:24px;font-weight:600;font-family:var(--mono)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,260px) auto;gap:10px;margin-bottom:14px}
+.filters input,.filters select{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:10px 12px;color:var(--text);outline:none
+}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--border)}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.mono{font-family:var(--mono);color:#c6ddff}
+.badge{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(74,143,255,.12);border:1px solid rgba(74,143,255,.2);color:var(--accent);font-size:11px;font-weight:600}
+.muted{color:var(--muted2)}
+@media(max-width:1100px){.g4,.filters{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-    <main class="shell">
-        <section class="panel hero">
-            <div class="eyebrow"><i class="bi bi-journal-text me-2"></i>Historial de seguridad y trazabilidad</div>
-            <h1 class="title">Security Events</h1>
-            <p class="copy">Revisa accesos, bloqueos, cambios de rol, cambios de contrasena y acciones sensibles del laboratorio desde una vista mas clara y consistente con el dashboard principal.</p>
+<nav>
+  <div class="brand"><div class="brand-icon">🤖</div>Agente IA</div>
+  <div class="actions">
+    <a href="{% url 'soc_dashboard' %}" class="btn-outline">Volver al dashboard</a>
+    <a href="{% url 'admin_user_access' %}" class="btn">Gestionar accesos</a>
+  </div>
+</nav>
 
-            <div class="hero-tools">
-                <a href="{% url 'soc_dashboard' %}" class="btn-soc-outline"><i class="bi bi-arrow-left"></i>Volver al dashboard</a>
-                <a href="{% url 'admin_user_access' %}" class="btn-soc"><i class="bi bi-people"></i>Gestionar accesos</a>
-                <div class="small-copy">Se muestran hasta 250 eventos recientes y puedes filtrarlos por texto libre o tipo de evento.</div>
-            </div>
+<div class="content">
+  <div class="header">
+    <div>
+      <div class="title">Historial de accesos y cambios</div>
+      <div class="sub">Bitacora del Agente para revisar ingresos, bloqueos, cambios de rol, contrasenas y otras acciones sensibles.</div>
+    </div>
+  </div>
 
-            <div class="kpis">
-                <article class="kpi">
-                    <div class="kpi-label">Eventos totales</div>
-                    <div class="kpi-value">{{ total_events }}</div>
-                </article>
-                <article class="kpi">
-                    <div class="kpi-label">Logins fallidos</div>
-                    <div class="kpi-value">{{ failed_logins }}</div>
-                </article>
-                <article class="kpi">
-                    <div class="kpi-label">Bloqueos</div>
-                    <div class="kpi-value">{{ lockouts }}</div>
-                </article>
-                <article class="kpi">
-                    <div class="kpi-label">Cambios sensibles</div>
-                    <div class="kpi-value">{{ sensitive_changes }}</div>
-                </article>
-            </div>
+  <div class="g4">
+    <div class="mc"><div class="mc-lbl">Eventos totales</div><div class="mc-val">{{ total_events }}</div></div>
+    <div class="mc"><div class="mc-lbl">Logins fallidos</div><div class="mc-val" style="color:var(--critical)">{{ failed_logins }}</div></div>
+    <div class="mc"><div class="mc-lbl">Bloqueos</div><div class="mc-val" style="color:var(--medium)">{{ lockouts }}</div></div>
+    <div class="mc"><div class="mc-lbl">Cambios sensibles</div><div class="mc-val" style="color:var(--low)">{{ sensitive_changes }}</div></div>
+  </div>
 
-            <form method="get" class="filters">
-                <input type="text" name="q" value="{{ current_query }}" class="form-control" placeholder="Buscar por usuario, IP, detalle o evento">
-                <select name="event_type" class="form-select">
-                    <option value="">Todos los eventos</option>
-                    {% for item in event_types %}
-                    <option value="{{ item }}" {% if current_event_type == item %}selected{% endif %}>{{ item }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn-soc" style="border:none;"><i class="bi bi-funnel"></i>Filtrar</button>
-            </form>
-        </section>
+  <div class="card">
+    <form method="get" class="filters">
+      <input type="text" name="q" value="{{ current_query }}" placeholder="Buscar por usuario, IP, detalle o evento">
+      <select name="event_type">
+        <option value="">Todos los eventos</option>
+        {% for item in event_types %}
+        <option value="{{ item }}" {% if current_event_type == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn">Filtrar</button>
+    </form>
 
-        <section class="panel content mt-4">
-            <div class="table-wrap">
-                <table class="table align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Evento</th>
-                            <th>Actor</th>
-                            <th>Objetivo</th>
-                            <th>IP origen</th>
-                            <th>User-Agent</th>
-                            <th>Detalle</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for event in events %}
-                        <tr>
-                            <td class="mono">{{ event.created_at|date:"Y-m-d H:i:s" }}</td>
-                            <td><span class="badge-event">{{ event.event_type }}</span></td>
-                            <td>
-                                <div class="fw-semibold">{{ event.username|default:"-" }}</div>
-                                <div class="muted-td">{{ event.actor.username|default:"Sin actor asociado" }}</div>
-                            </td>
-                            <td>{{ event.target_username|default:"-" }}</td>
-                            <td class="mono">{{ event.ip_address|default:"-" }}</td>
-                            <td class="muted-td">{{ event.user_agent|default:"-" }}</td>
-                            <td class="muted-td">{{ event.details|default:"-" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center py-5 muted-td">
-                                Todavia no hay eventos registrados. Realiza un login, un cambio de rol o una accion administrativa para empezar a poblar esta bitacora.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </main>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Evento</th>
+            <th>Actor</th>
+            <th>Objetivo</th>
+            <th>IP</th>
+            <th>User-Agent</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in events %}
+          <tr>
+            <td class="mono">{{ event.created_at|date:"Y-m-d H:i:s" }}</td>
+            <td><span class="badge">{{ event.event_type }}</span></td>
+            <td><strong>{{ event.username|default:"-" }}</strong><div class="muted">{{ event.actor.username|default:"Sin actor asociado" }}</div></td>
+            <td>{{ event.target_username|default:"-" }}</td>
+            <td class="mono">{{ event.ip_address|default:"-" }}</td>
+            <td class="muted">{{ event.user_agent|default:"-" }}</td>
+            <td class="muted">{{ event.details|default:"-" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="muted">Todavia no hay eventos registrados en esta bitacora.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 </body>
 </html>

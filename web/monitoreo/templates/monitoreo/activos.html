@@ -1,0 +1,49 @@
+{% extends "monitoreo/base_dashboard.html" %}
+{% load role_tags %}
+{% block title %}Agente IA — Activos{% endblock %}
+{% block dashboard_content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Activos relacionados</div>
+    <div class="page-sub">Inventario que el Agente usa para dar mas contexto sobre impacto y prioridad.</div>
+  </div>
+</div>
+
+{% if can_manage_assets %}
+<div class="card" style="margin-bottom:18px">
+  <div class="card-title">Registrar o actualizar activo</div>
+  <form action="{% url 'agregar_activo' %}" method="post" class="form-inline">
+    {% csrf_token %}
+    <input type="text" name="ip" placeholder="IP del activo" required>
+    <input type="text" name="nombre" placeholder="Nombre del activo" required>
+    <input type="number" name="criticidad" min="1" max="5" placeholder="Criticidad 1-5" required>
+    <button type="submit" class="nav-tab active" style="justify-content:center">Guardar</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="asset-grid">
+  {% for activo in activos_con_alertas %}
+  <div class="asset-card">
+    <div class="asset-hd">
+      <div class="asset-ico">🖥️</div>
+      <div>
+        <div class="asset-name">{{ activo.nombre }}</div>
+        <div class="asset-ip">{% if can_view_sensitive_data %}{{ activo.ip }}{% else %}{{ activo.ip|mask_ip }}{% endif %}</div>
+      </div>
+      <div class="asset-score-big" style="color:{% if activo.criticidad >= 5 %}var(--critical){% elif activo.criticidad >= 4 %}var(--high){% elif activo.criticidad >= 3 %}var(--medium){% else %}var(--low){% endif %}">
+        {{ activo.criticidad }}
+      </div>
+    </div>
+    <div class="asset-meta">
+      <span>Rol: {{ role_label }}</span>
+      <span>{% if activo.criticidad >= 4 %}Atencion alta{% else %}Seguimiento normal{% endif %}</span>
+    </div>
+    <div class="crit-row"><span>Criticidad del activo</span><span>{{ activo.criticidad }}/5</span></div>
+    <div class="crit-trk"><div class="crit-fill" style="width:{% widthratio activo.criticidad 5 100 %}%;background:{% if activo.criticidad >= 5 %}var(--critical){% elif activo.criticidad >= 4 %}var(--high){% elif activo.criticidad >= 3 %}var(--medium){% else %}var(--low){% endif %}"></div></div>
+  </div>
+  {% empty %}
+  <div class="card empty">No hay activos relacionados con las alertas visibles en este momento.</div>
+  {% endfor %}
+</div>
+{% endblock %}

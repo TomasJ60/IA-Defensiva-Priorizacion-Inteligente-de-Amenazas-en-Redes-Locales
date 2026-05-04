@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agente IA — Verificación 2FA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b0f;--bg2:#0f1318;--bg3:#151b24;--bg4:#1b2232;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.16);
+  --text:#dde4ed;--muted:#5e6e82;--muted2:#8a9ab0;
+  --accent:#4a8fff;--accent2:#2e6de0;
+  --critical:#e8414a;--low:#3db882;--medium:#d4a843;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:12px;--r2:8px;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;
+  background-image:
+    linear-gradient(rgba(74,143,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(74,143,255,.03) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;
+}
+body::after{
+  content:'';position:fixed;top:-10%;left:50%;transform:translateX(-50%);
+  width:500px;height:300px;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(74,143,255,.07) 0%,transparent 70%);
+  z-index:0;pointer-events:none;
+}
+
+.page{
+  position:relative;z-index:1;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;
+}
+
+/* Brand */
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:40px}
+.brand-icon{
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  box-shadow:0 0 24px rgba(74,143,255,.25);
+}
+.brand-name{font-size:20px;font-weight:600;letter-spacing:-.4px}
+.brand-sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
+
+/* Card */
+.card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r);padding:36px 40px;width:100%;max-width:440px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+
+/* Shield icon */
+.shield-wrap{
+  display:flex;align-items:center;justify-content:center;margin-bottom:24px;
+}
+.shield{
+  width:72px;height:72px;border-radius:50%;
+  background:rgba(74,143,255,.1);border:2px solid rgba(74,143,255,.25);
+  display:flex;align-items:center;justify-content:center;font-size:32px;
+  position:relative;
+}
+.shield-ring{
+  position:absolute;inset:-8px;border-radius:50%;
+  border:1px solid rgba(74,143,255,.15);
+  animation:ring-pulse 2.5s ease-in-out infinite;
+}
+.shield-ring2{
+  position:absolute;inset:-16px;border-radius:50%;
+  border:1px solid rgba(74,143,255,.07);
+  animation:ring-pulse 2.5s ease-in-out infinite .5s;
+}
+@keyframes ring-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.04)}}
+
+.card-title{font-size:20px;font-weight:600;text-align:center;margin-bottom:6px;letter-spacing:-.3px}
+.card-sub{font-size:13px;color:var(--muted2);text-align:center;margin-bottom:30px;line-height:1.6}
+
+/* Method selector */
+.method-row{display:flex;gap:8px;margin-bottom:24px}
+.method-btn{
+  flex:1;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r2);padding:10px 12px;cursor:pointer;
+  font-family:var(--font);font-size:12px;color:var(--muted2);
+  transition:all .15s;text-align:center;
+}
+.method-btn:hover{border-color:var(--border2);color:var(--text)}
+.method-btn.active{background:rgba(74,143,255,.1);border-color:rgba(74,143,255,.35);color:var(--accent)}
+.method-icon{font-size:20px;display:block;margin-bottom:5px}
+
+/* OTP inputs */
+.otp-section{display:block}
+.otp-label{font-size:12px;font-weight:500;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.otp-wrap{display:flex;gap:10px;justify-content:center;margin-bottom:8px}
+.otp-input{
+  width:52px;height:60px;border-radius:var(--r2);
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:24px;font-weight:600;
+  text-align:center;outline:none;transition:all .15s;
+  -moz-appearance:textfield;
+}
+.otp-input::-webkit-outer-spin-button,.otp-input::-webkit-inner-spin-button{-webkit-appearance:none}
+.otp-input:focus{border-color:var(--accent);background:rgba(74,143,255,.06);box-shadow:0 0 0 3px rgba(74,143,255,.12)}
+.otp-input.filled{border-color:rgba(74,143,255,.4);color:var(--accent)}
+.otp-input.error{border-color:rgba(232,65,74,.4);animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* QR section */
+.qr-section{display:none;text-align:center}
+.qr-frame{
+  display:inline-block;background:#fff;padding:16px;border-radius:var(--r);
+  margin:8px 0 12px;
+}
+.qr-placeholder{
+  width:180px;height:180px;background:#f0f0f0;display:flex;align-items:center;
+  justify-content:center;color:#999;font-size:12px;flex-direction:column;gap:8px;
+}
+.qr-code-img{width:180px;height:180px}
+
+/* SMS section */
+.sms-section{display:none}
+.sms-sent{
+  background:rgba(61,184,130,.1);border:1px solid rgba(61,184,130,.2);
+  border-radius:var(--r2);padding:10px 14px;margin-bottom:16px;
+  font-size:13px;color:var(--low);display:flex;align-items:center;gap:8px;
+}
+.phone-masked{font-family:var(--mono);font-weight:600}
+
+/* Timer */
+.timer-row{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:8px;font-size:12px;color:var(--muted);
+}
+.timer{font-family:var(--mono);font-weight:600;color:var(--text)}
+.resend-btn{
+  background:none;border:none;color:var(--accent);
+  font-family:var(--font);font-size:12px;cursor:pointer;
+  transition:opacity .15s;padding:0;
+}
+.resend-btn:hover{opacity:.7}
+.resend-btn:disabled{color:var(--muted);cursor:not-allowed}
+
+/* Alert */
+.alert-err{
+  background:rgba(232,65,74,.1);border:1px solid rgba(232,65,74,.25);
+  border-radius:var(--r2);padding:10px 14px;margin-bottom:16px;
+  font-size:13px;color:var(--critical);display:none;align-items:center;gap:8px;
+}
+.alert-err.show{display:flex}
+.alert-ok{
+  background:rgba(61,184,130,.1);border:1px solid rgba(61,184,130,.2);
+  border-radius:var(--r2);padding:10px 14px;margin-bottom:16px;
+  font-size:13px;color:var(--low);display:none;align-items:center;gap:8px;
+}
+.alert-ok.show{display:flex}
+
+/* Button */
+.btn-main{
+  width:100%;background:var(--accent);color:#fff;border:none;
+  border-radius:var(--r2);padding:13px;font-family:var(--font);
+  font-size:15px;font-weight:600;cursor:pointer;
+  transition:all .15s;letter-spacing:-.2px;
+  display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px;
+}
+.btn-main:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 6px 20px rgba(74,143,255,.3)}
+.btn-main:active{transform:translateY(0)}
+.btn-main.loading{opacity:.7;pointer-events:none}
+
+/* Progress bar */
+.progress-wrap{margin-top:20px}
+.progress-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px}
+.progress-bar{height:3px;background:var(--bg4);border-radius:2px}
+.progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width 1s linear}
+
+/* Info */
+.info-box{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r2);padding:12px 14px;margin-top:20px;
+  font-size:12px;color:var(--muted2);line-height:1.6;
+  display:flex;gap:10px;align-items:flex-start;
+}
+
+/* Back link */
+.back-link{
+  display:flex;align-items:center;gap:6px;margin-top:20px;
+  font-size:13px;color:var(--muted2);text-decoration:none;justify-content:center;
+  transition:color .15s;
+}
+.back-link:hover{color:var(--text)}
+
+/* Footer */
+.footer{margin-top:28px;font-size:12px;color:var(--muted);text-align:center}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+
+@media(max-width:480px){.card{padding:28px 20px}.otp-input{width:44px;height:54px;font-size:20px}}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="brand">
+    <div class="brand-icon">🤖</div>
+    <div>
+      <div class="brand-name">Agente IA</div>
+      <div class="brand-sub">Plataforma SOC</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- Shield visual -->
+    <div class="shield-wrap">
+      <div class="shield">
+        🛡️
+        <div class="shield-ring"></div>
+        <div class="shield-ring2"></div>
+      </div>
+    </div>
+
+    <div class="card-title">Verificación en dos pasos</div>
+    <div class="card-sub">Selecciona tu método de autenticación<br/>para completar el inicio de sesión</div>
+
+    <!-- Error / success alerts -->
+    <div class="alert-err" id="alertErr">⚠️ <span id="errMsg">Código incorrecto. Inténtalo de nuevo.</span></div>
+    <div class="alert-ok" id="alertOk">✓ <span>Código válido. Redirigiendo…</span></div>
+
+    <!-- Method selector -->
+    <div class="method-row">
+      <div class="method-btn active" id="m-app" onclick="setMethod('app')">
+        <span class="method-icon">📱</span>
+        App Auth
+      </div>
+      <div class="method-btn" id="m-qr" onclick="setMethod('qr')">
+        <span class="method-icon">⬛</span>
+        Escanear QR
+      </div>
+      <div class="method-btn" id="m-sms" onclick="setMethod('sms')">
+        <span class="method-icon">💬</span>
+        SMS
+      </div>
+    </div>
+
+    <!-- ── APP AUTHENTICATOR ── -->
+    <div class="otp-section" id="sec-app">
+      <div class="otp-label">Código de 6 dígitos</div>
+      <div class="otp-wrap" id="otpWrap">
+        <input class="otp-input" type="number" maxlength="1" id="d0" oninput="otpInput(0)" onkeydown="otpKey(event,0)" autofocus/>
+        <input class="otp-input" type="number" maxlength="1" id="d1" oninput="otpInput(1)" onkeydown="otpKey(event,1)"/>
+        <input class="otp-input" type="number" maxlength="1" id="d2" oninput="otpInput(2)" onkeydown="otpKey(event,2)"/>
+        <input class="otp-input" type="number" maxlength="1" id="d3" oninput="otpInput(3)" onkeydown="otpKey(event,3)"/>
+        <input class="otp-input" type="number" maxlength="1" id="d4" oninput="otpInput(4)" onkeydown="otpKey(event,4)"/>
+        <input class="otp-input" type="number" maxlength="1" id="d5" oninput="otpInput(5)" onkeydown="otpKey(event,5)"/>
+      </div>
+      <div class="timer-row">
+        <span>Código válido por: <span class="timer" id="countdown">00:30</span></span>
+        <button class="resend-btn" id="resendBtn" onclick="resetTimer()" disabled>Reenviar código</button>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="progress-wrap">
+        <div class="progress-lbl"><span>Tiempo restante</span><span id="pctLbl">100%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:100%"></div></div>
+      </div>
+
+      <button class="btn-main" id="btnVerify" onclick="verifyCode()">
+        <span id="btnTxt">Verificar código</span>
+      </button>
+    </div>
+
+    <!-- ── QR SCAN ── -->
+    <div class="qr-section" id="sec-qr">
+      <div style="font-size:13px;color:var(--muted2);margin-bottom:12px;text-align:center">
+        Escanea este código con tu app autenticadora<br/>(Google Authenticator, Authy, etc.)
+      </div>
+      <div class="qr-frame">
+        <!-- QR placeholder — reemplazar con imagen real del backend -->
+        <div class="qr-placeholder">
+          <span style="font-size:32px">⬛</span>
+          <span>QR generado por<br/>el servidor</span>
+        </div>
+        <!-- Cuando tengas el QR real: <img src="{{ qr_url }}" class="qr-code-img"/> -->
+      </div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px">
+        O ingresa manualmente: <span style="font-family:var(--mono);font-size:12px;color:var(--accent)">JBSWY3DPEHPK3PXP</span>
+      </div>
+      <div class="otp-label" style="text-align:center">Luego ingresa el código generado</div>
+      <div class="otp-wrap">
+        <input class="otp-input" type="number" maxlength="1" id="qd0" oninput="qrInput(0)" onkeydown="qrKey(event,0)"/>
+        <input class="otp-input" type="number" maxlength="1" id="qd1" oninput="qrInput(1)" onkeydown="qrKey(event,1)"/>
+        <input class="otp-input" type="number" maxlength="1" id="qd2" oninput="qrInput(2)" onkeydown="qrKey(event,2)"/>
+        <input class="otp-input" type="number" maxlength="1" id="qd3" oninput="qrInput(3)" onkeydown="qrKey(event,3)"/>
+        <input class="otp-input" type="number" maxlength="1" id="qd4" oninput="qrInput(4)" onkeydown="qrKey(event,4)"/>
+        <input class="otp-input" type="number" maxlength="1" id="qd5" oninput="qrInput(5)" onkeydown="qrKey(event,5)"/>
+      </div>
+      <button class="btn-main" onclick="verifyCode('qr')"><span>Verificar y acceder</span></button>
+    </div>
+
+    <!-- ── SMS ── -->
+    <div class="sms-section" id="sec-sms">
+      <div class="sms-sent">
+        📲 Código enviado a <span class="phone-masked">+57 *** *** 89</span>
+      </div>
+      <div class="otp-label">Código SMS de 6 dígitos</div>
+      <div class="otp-wrap">
+        <input class="otp-input" type="number" maxlength="1" id="sd0" oninput="smsInput(0)" onkeydown="smsKey(event,0)"/>
+        <input class="otp-input" type="number" maxlength="1" id="sd1" oninput="smsInput(1)" onkeydown="smsKey(event,1)"/>
+        <input class="otp-input" type="number" maxlength="1" id="sd2" oninput="smsInput(2)" onkeydown="smsKey(event,2)"/>
+        <input class="otp-input" type="number" maxlength="1" id="sd3" oninput="smsInput(3)" onkeydown="smsKey(event,3)"/>
+        <input class="otp-input" type="number" maxlength="1" id="sd4" oninput="smsInput(4)" onkeydown="smsKey(event,4)"/>
+        <input class="otp-input" type="number" maxlength="1" id="sd5" oninput="smsInput(5)" onkeydown="smsKey(event,5)"/>
+      </div>
+      <div class="timer-row">
+        <span>Expira en: <span class="timer" id="smsCountdown">02:00</span></span>
+        <button class="resend-btn" id="smsResend" onclick="resendSMS()" disabled>Reenviar SMS</button>
+      </div>
+      <button class="btn-main" onclick="verifyCode('sms')"><span>Verificar y acceder</span></button>
+    </div>
+
+    <!-- Info box -->
+    <div class="info-box">
+      <span>ℹ️</span>
+      <span>Si tienes problemas con tu autenticador, contacta al administrador del sistema o accede con tu código de recuperación.</span>
+    </div>
+
+    <a href="/login/" class="back-link">← Volver al inicio de sesión</a>
+  </div>
+
+  <div class="footer">Agente IA &copy; 2025 &nbsp;·&nbsp; Acceso seguro con 2FA</div>
+</div>
+
+<script>
+// ── METHOD SELECTOR ──
+function setMethod(m){
+  ['app','qr','sms'].forEach(x=>{
+    document.getElementById('m-'+x).classList.remove('active');
+    document.getElementById('sec-'+x).style.display='none';
+  });
+  document.getElementById('m-'+m).classList.add('active');
+  document.getElementById('sec-'+m).style.display='block';
+  document.getElementById('alertErr').classList.remove('show');
+  document.getElementById('alertOk').classList.remove('show');
+}
+setMethod('app');
+
+// ── OTP INPUT LOGIC (factory) ──
+function makeOtpHandlers(prefix, len=6){
+  return {
+    input(idx){
+      const el=document.getElementById(prefix+idx);
+      const v=el.value.slice(-1);
+      el.value=v;
+      if(v) el.classList.add('filled'); else el.classList.remove('filled');
+      if(v && idx<len-1) document.getElementById(prefix+(idx+1)).focus();
+      if(idx===len-1 && v) checkComplete(prefix,len);
+    },
+    key(e,idx){
+      if(e.key==='Backspace'&&!document.getElementById(prefix+idx).value&&idx>0)
+        document.getElementById(prefix+(idx-1)).focus();
+    }
+  };
+}
+const app=makeOtpHandlers('d');
+const qr=makeOtpHandlers('qd');
+const sms=makeOtpHandlers('sd');
+
+function otpInput(i){app.input(i)} function otpKey(e,i){app.key(e,i)}
+function qrInput(i){qr.input(i)}   function qrKey(e,i){qr.key(e,i)}
+function smsInput(i){sms.input(i)} function smsKey(e,i){sms.key(e,i)}
+
+function checkComplete(prefix,len){
+  const code=Array.from({length:len},(_,i)=>document.getElementById(prefix+i).value).join('');
+  if(code.length===6) {} // auto-submit aquí si quieres
+}
+
+// ── TIMER ──
+let secs=30, timerInterval;
+function startTimer(){
+  clearInterval(timerInterval);
+  secs=30;
+  document.getElementById('resendBtn').disabled=true;
+  timerInterval=setInterval(()=>{
+    secs--;
+    const m=String(Math.floor(secs/60)).padStart(2,'0');
+    const s=String(secs%60).padStart(2,'0');
+    document.getElementById('countdown').textContent=`${m}:${s}`;
+    const pct=Math.round((secs/30)*100);
+    document.getElementById('progressFill').style.width=pct+'%';
+    document.getElementById('pctLbl').textContent=pct+'%';
+    if(secs<=0){
+      clearInterval(timerInterval);
+      document.getElementById('resendBtn').disabled=false;
+      document.getElementById('progressFill').style.background='var(--critical)';
+    }
+  },1000);
+}
+startTimer();
+
+function resetTimer(){
+  document.getElementById('progressFill').style.background='var(--accent)';
+  startTimer();
+  for(let i=0;i<6;i++){
+    const el=document.getElementById('d'+i);
+    el.value='';el.classList.remove('filled','error');
+  }
+  document.getElementById('d0').focus();
+}
+
+// SMS timer
+let smsSecs=120, smsInterval;
+function startSMSTimer(){
+  clearInterval(smsInterval);
+  smsSecs=120;
+  document.getElementById('smsResend').disabled=true;
+  smsInterval=setInterval(()=>{
+    smsSecs--;
+    const m=String(Math.floor(smsSecs/60)).padStart(2,'0');
+    const s=String(smsSecs%60).padStart(2,'0');
+    document.getElementById('smsCountdown').textContent=`${m}:${s}`;
+    if(smsSecs<=0){clearInterval(smsInterval);document.getElementById('smsResend').disabled=false}
+  },1000);
+}
+startSMSTimer();
+function resendSMS(){startSMSTimer();alert('Código reenviado (integrar con backend)')}
+
+// ── VERIFY ──
+function verifyCode(mode='app'){
+  const prefix=mode==='app'?'d':mode==='qr'?'qd':'sd';
+  const code=Array.from({length:6},(_,i)=>document.getElementById(prefix+i).value).join('');
+  const err=document.getElementById('alertErr');
+  const ok=document.getElementById('alertOk');
+  err.classList.remove('show'); ok.classList.remove('show');
+
+  if(code.length<6){
+    document.getElementById('errMsg').textContent='Ingresa los 6 dígitos del código.';
+    err.classList.add('show'); return;
+  }
+
+  const btn=mode==='app'?document.getElementById('btnVerify'):null;
+  if(btn){btn.classList.add('loading');btn.innerHTML='<div class="spinner"></div> Verificando…'}
+
+  setTimeout(()=>{
+    // Demo: código "123456" = éxito · cualquier otro = error
+    if(code==='123456'){
+      ok.classList.add('show');
+      setTimeout(()=>{window.location.href='/dashboard/'},1200);
+    } else {
+      document.getElementById('errMsg').textContent='Código incorrecto. Quedan 2 intentos.';
+      err.classList.add('show');
+      for(let i=0;i<6;i++){
+        const el=document.getElementById(prefix+i);
+        el.value='';el.classList.remove('filled');el.classList.add('error');
+        setTimeout(()=>el.classList.remove('error'),500);
+      }
+      document.getElementById(prefix+'0').focus();
+      if(btn){btn.classList.remove('loading');btn.innerHTML='<span id="btnTxt">Verificar código</span>'}
+    }
+  },1200);
+}
+
+// Paste support
+document.addEventListener('paste',e=>{
+  const txt=e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
+  if(txt.length===6){
+    const active=document.querySelector('.otp-section[style*="block"], .otp-section:not([style])');
+    const prefix=document.getElementById('sec-app').style.display!=='none'?'d':document.getElementById('sec-qr').style.display!=='none'?'qd':'sd';
+    txt.split('').forEach((c,i)=>{const el=document.getElementById(prefix+i);if(el){el.value=c;el.classList.add('filled')}});
+    e.preventDefault();
+  }
+});
+</script>
+</body>
+</html>

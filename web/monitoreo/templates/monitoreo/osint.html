@@ -1,0 +1,48 @@
+{% extends "monitoreo/base_dashboard.html" %}
+{% block title %}Agente IA — OSINT{% endblock %}
+{% block dashboard_content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Estado de integraciones OSINT</div>
+    <div class="page-sub">Fuentes externas que el Agente usa para enriquecer contexto y apoyar la priorizacion.</div>
+  </div>
+</div>
+
+<div class="osint-grid">
+  {% for provider in osint_status %}
+  <div class="osint-card">
+    <div class="osint-hd">
+      <div class="osint-name">
+        <span class="st-dot {% if provider.configured %}st-ok{% elif provider.mode == 'community' %}st-warn{% else %}st-err{% endif %}"></span>
+        {{ provider.name }}
+      </div>
+      {% if provider.configured %}
+      <span class="badge bl">Activa</span>
+      {% elif provider.mode == "community" %}
+      <span class="badge bm">Comunidad</span>
+      {% else %}
+      <span class="badge bc">Sin API</span>
+      {% endif %}
+    </div>
+    <div class="osint-desc">
+      {% if provider.configured %}
+      Disponible para enriquecer alertas con contexto adicional.
+      {% elif provider.mode == "community" %}
+      Disponible con cobertura limitada usando modo comunitario.
+      {% else %}
+      Necesita configuracion en variables de entorno para activarse.
+      {% endif %}
+    </div>
+    <div class="osint-result">
+      {% if provider.configured %}
+      Estado operativo. El Agente puede consultar esta fuente durante el analisis.
+      {% elif provider.mode == "community" %}
+      Estado parcial. El Agente usa una modalidad limitada para no perder contexto.
+      {% else %}
+      Estado inactivo. Completa la API key para aumentar la calidad del enriquecimiento.
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

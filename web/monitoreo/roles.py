@@ -14,6 +14,7 @@ ROLE_ALIASES = {
     ROLE_ANALYST: ROLE_ANALYST,
     ROLE_VIEWER: ROLE_VIEWER,
     "Administrador": ROLE_ADMIN,
+    "Analista": ROLE_ANALYST,
     "Analista SOC": ROLE_ANALYST,
     "Solo lectura": ROLE_VIEWER,
 }
@@ -43,7 +44,7 @@ def get_role_label(user):
     role = get_user_role(user)
     labels = {
         ROLE_ADMIN: "Administrador",
-        ROLE_ANALYST: "Analista SOC",
+        ROLE_ANALYST: "Analista",
         ROLE_VIEWER: "Solo lectura",
         None: "Sin rol",
     }
@@ -78,7 +79,7 @@ def user_can_view_sensitive_data(user):
 def assign_soc_role(user, role_name):
     role_name = ROLE_ALIASES.get(role_name, role_name)
     if role_name not in SOC_ACCESS_GROUPS:
-        raise ValueError("Rol SOC no valido.")
+        raise ValueError("Rol del Agente no valido.")
 
     groups_to_remove = list(Group.objects.filter(name__in=ROLE_ALIASES.keys()))
     if groups_to_remove:
@@ -97,7 +98,7 @@ def require_soc_access(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
         if not user_has_soc_access(request.user):
-            raise PermissionDenied("Tu usuario no tiene acceso al dashboard SOC.")
+            raise PermissionDenied("Tu usuario no tiene acceso a la consola del Agente.")
         return view_func(request, *args, **kwargs)
 
     return _wrapped

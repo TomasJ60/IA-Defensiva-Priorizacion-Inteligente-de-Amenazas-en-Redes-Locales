@@ -48,7 +48,7 @@ from .totp import construir_otpauth_uri, construir_qr_data_uri, generar_secreto_
 SESSION_2FA_USER_KEY = "two_factor_user_id"
 SESSION_2FA_PASSED_KEY = "two_factor_passed"
 SESSION_POST_2FA_REDIRECT_KEY = "post_2fa_redirect"
-TWO_FACTOR_ISSUER = "SOC IA Defensiva"
+TWO_FACTOR_ISSUER = "Agente IA"
 
 
 def _severity_badge(value):
@@ -92,15 +92,84 @@ def _safe_localtime(value):
         return value
 
 
+def _extract_ml_metrics(explanation):
+    """Extrae métricas ML de la explicación"""
+    import re
+    metrics = {
+        'accuracy': None,
+        'f1': None,
+        'risk_percentage': None,
+        'criticidad': None,
+        'osint_score': None,
+        'abuse_percentage': None,
+        'otx_pulses': None,
+        'ajuste_contextual': None,
+        'severidad': None,
+    }
+    
+    if not explanation:
+        return metrics
+    
+    try:
+        # Extraer accuracy y f1
+        ml_match = re.search(r'ML\s*\(\s*acc\s*=\s*(\d+\.\d+)\s*,\s*f1\s*=\s*(\d+\.\d+)', explanation)
+        if ml_match:
+            metrics['accuracy'] = float(ml_match.group(1))
+            metrics['f1'] = float(ml_match.group(2))
+        
+        # Extraer riesgo (porcentaje)
+        risk_match = re.search(r'(\d+)%\s+riesgo', explanation)
+        if risk_match:
+            metrics['risk_percentage'] = int(risk_match.group(1))
+        
+        # Extraer criticidad
+        crit_match = re.search(r'Criticidad:\s*(\d+)/5', explanation)
+        if crit_match:
+            metrics['criticidad'] = int(crit_match.group(1))
+        
+        # Extraer OSINT score - evitar capturar puntos de oración
+        osint_match = re.search(r'OSINT\s+score:\s*(\d+\.\d+)(?:\s|\.)', explanation)
+        if osint_match:
+            metrics['osint_score'] = float(osint_match.group(1))
+        
+        # Extraer AbuseIPDB
+        abuse_match = re.search(r'AbuseIPDB:\s*(\d+)%', explanation)
+        if abuse_match:
+            metrics['abuse_percentage'] = int(abuse_match.group(1))
+        
+        # Extraer OTX pulses
+        otx_match = re.search(r'OTX\s+pulses:\s*(\d+)', explanation)
+        if otx_match:
+            metrics['otx_pulses'] = int(otx_match.group(1))
+        
+        # Extraer ajuste contextual
+        ajuste_match = re.search(r'Ajuste\s+contextual:\s*([-+]?\d+\.\d+)', explanation)
+        if ajuste_match:
+            metrics['ajuste_contextual'] = float(ajuste_match.group(1))
+        
+        # Extraer severidad
+        sev_match = re.search(r'Severidad:\s*(\w+)', explanation)
+        if sev_match:
+            metrics['severidad'] = sev_match.group(1)
+    except (ValueError, AttributeError, IndexError):
+        # Si hay algún error en la parsing, devolver métricas vacías
+        pass
+    
+    return metrics
+
+
 def _format_alert_for_dashboard(alerta, can_view_sensitive):
     fecha_local = _safe_localtime(alerta.fecha)
     severity = _severity_badge(alerta.severidad)
     priority = _priority_badge(alerta.prioridad_ia)
     explanation = alerta.explicacion or "Sin explicacion generada todavia."
-    recommendation = alerta.recomendacion or "Escalar al analista SOC para revision detallada."
+    recommendation = alerta.recomendacion or "Escalar al analista responsable para revision detallada."
+    
+    # Extraer métricas ML
+    ml_metrics = _extract_ml_metrics(explanation)
 
     if not can_view_sensitive:
-        explanation = "Detalle restringido para este rol. Revisa con un analista SOC o un administrador."
+        explanation = "Detalle restringido para este rol. Revisa con un analista o un administrador."
         recommendation = "Elevar la alerta a un rol con acceso ampliado para aplicar la contencion adecuada."
 
     if hasattr(fecha_local, "strftime"):
@@ -112,6 +181,15 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive):
     else:
         fecha_display = "Sin fecha"
         hora_display = "--:--:--"
+
+    # Contexto OSINT resumido
+    osint_context = []
+    if alerta.vt_malicious or alerta.vt_suspicious or alerta.vt_reputation:
+        osint_context.append(f"VT: {alerta.vt_malicious or '-'}")
+    if alerta.abuse_confidence:
+        osint_context.append(f"Abuse: {alerta.abuse_confidence}")
+    if alerta.otx_pulse_count:
+        osint_context.append(f"OTX: {alerta.otx_pulse_count}")
 
     return {
         "id": alerta.id,
@@ -134,6 +212,64 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive):
         "vt_malicious": alerta.vt_malicious,
         "abuse_confidence": alerta.abuse_confidence,
         "otx_pulse_count": alerta.otx_pulse_count,
+        # Nuevos campos de ML
+        "ml_metrics": ml_metrics,
+        "osint_context": " · ".join(osint_context) if osint_context else "Sin datos OSINT",
+        "explicacion_raw": alerta.explicacion,
+    }
+
+
+def _build_dashboard_context(request, current_section="overview"):
+    from datetime import timedelta
+
+    can_manage_assets = user_can_manage_assets(request.user)
+    can_view_sensitive = user_can_view_sensitive_data(request.user)
+
+    alertas_recientes = Alerta.objects.all().order_by("-prioridad_ia", "-fecha")[:50]
+
+    alert_cards = [
+        _format_alert_for_dashboard(alerta, can_view_sensitive)
+        for alerta in alertas_recientes
+    ]
+
+    ips_con_alertas = set()
+    todas_alertas = Alerta.objects.all()[:1000]
+    for alerta in todas_alertas:
+        if alerta.ip_origen:
+            ips_con_alertas.add(alerta.ip_origen)
+        if alerta.ip_destino:
+            ips_con_alertas.add(alerta.ip_destino)
+
+    activos_con_alertas = (
+        Activo.objects.filter(ip__in=ips_con_alertas).order_by("-criticidad")
+        if ips_con_alertas else Activo.objects.none()
+    )
+
+    resumen = Alerta.objects.aggregate(
+        total_alertas=Count("id"),
+        promedio_prioridad=Avg("prioridad_ia"),
+    )
+
+    osint_status = settings.OSINT_PROVIDER_STATUS
+    osint_configured = sum(1 for provider in osint_status if provider["configured"])
+    ultima_alerta = alert_cards[0] if alert_cards else None
+    criticidad_activos_alta = activos_con_alertas.filter(criticidad__gte=4).count() if ips_con_alertas else 0
+
+    return {
+        "alertas_criticas_recientes": alert_cards,
+        "activos_con_alertas": activos_con_alertas,
+        "total_alertas": resumen["total_alertas"] or 0,
+        "promedio_prioridad": resumen["promedio_prioridad"] or 0,
+        "role_label": get_role_label(request.user),
+        "is_admin_user": is_admin_user(request.user),
+        "osint_status": osint_status,
+        "osint_configured_count": osint_configured,
+        "can_manage_assets": can_manage_assets,
+        "can_view_sensitive_data": can_view_sensitive,
+        "total_alertas_criticas": len(alert_cards),
+        "ultima_alerta_critica": ultima_alerta,
+        "criticidad_activos_alta": criticidad_activos_alta,
+        "current_section": current_section,
     }
 
 
@@ -223,7 +359,9 @@ def two_factor_required(view_func):
 
         device = getattr(request.user, "two_factor_device", None)
         if not device or not device.is_confirmed:
+            _mark_2fa_pending(request, request.user.id, request.path)
             return redirect("two_factor_setup")
+        _mark_2fa_pending(request, request.user.id, request.path)
         return redirect("two_factor_verify")
 
     return _wrapped
@@ -297,85 +435,28 @@ class TwoFactorLoginView(LoginView):
 @require_soc_access
 @never_cache
 def soc_dashboard(request):
-    from datetime import timedelta
-    from django.utils.dateparse import parse_datetime
-    
-    can_manage_assets = user_can_manage_assets(request.user)
-    can_view_sensitive = user_can_view_sensitive_data(request.user)
+    return render(request, "monitoreo/overview.html", _build_dashboard_context(request, "overview"))
 
-    # Obtener TODAS las alertas críticas (sin filtro de fecha en BD)
-    todas_alertas_criticas = Alerta.objects.filter(
-        prioridad_ia__gte=80
-    ).order_by('-fecha')[:100]
-    
-    # Filtrar manualmente las de últimas 24h en memoria
-    hace_24h = timezone.now() - timedelta(hours=24)
-    alertas_criticas_recientes = []
-    
-    for alerta in todas_alertas_criticas:
-        try:
-            fecha_str = str(alerta.fecha)
-            # Intentar parsear como datetime
-            fecha_obj = parse_datetime(fecha_str)
-            # Si parse_datetime falla, intentar sin hora
-            if not fecha_obj:
-                from django.utils.dateparse import parse_date
-                fecha_date = parse_date(fecha_str)
-                if fecha_date:
-                    from datetime import datetime
-                    fecha_obj = datetime.combine(fecha_date, datetime.min.time())
-            # Comparar
-            if fecha_obj and fecha_obj >= hace_24h:
-                alertas_criticas_recientes.append(alerta)
-        except:
-            # Si falla todo, incluir de todas formas
-            alertas_criticas_recientes.append(alerta)
-    
-    alertas_criticas_recientes = alertas_criticas_recientes[:50]
-    alert_cards = [
-        _format_alert_for_dashboard(alerta, can_view_sensitive)
-        for alerta in alertas_criticas_recientes
-    ]
-    
-    # IPs con alertas
-    ips_con_alertas = set()
-    todas_alertas = Alerta.objects.all()[:1000]  # Limitar para rendimiento
-    for alerta in todas_alertas:
-        if alerta.ip_origen:
-            ips_con_alertas.add(alerta.ip_origen)
-        if alerta.ip_destino:
-            ips_con_alertas.add(alerta.ip_destino)
-    
-    # Activos que tienen conexiones reales
-    activos_con_alertas = Activo.objects.filter(ip__in=ips_con_alertas).order_by('-criticidad') if ips_con_alertas else Activo.objects.none()
-    
-    # Totales
-    resumen = Alerta.objects.aggregate(
-        total_alertas=Count('id'),
-        promedio_prioridad=Avg('prioridad_ia'),
-    )
-    
-    osint_status = settings.OSINT_PROVIDER_STATUS
-    osint_configured = sum(1 for provider in osint_status if provider["configured"])
-    ultima_alerta = alert_cards[0] if alert_cards else None
-    criticidad_activos_alta = activos_con_alertas.filter(criticidad__gte=4).count() if ips_con_alertas else 0
-    
-    context = {
-        'alertas_criticas_recientes': alert_cards,
-        'activos_con_alertas': activos_con_alertas,
-        'total_alertas': resumen['total_alertas'] or 0,
-        'promedio_prioridad': resumen['promedio_prioridad'] or 0,
-        'role_label': get_role_label(request.user),
-        'is_admin_user': is_admin_user(request.user),
-        'osint_status': osint_status,
-        'osint_configured_count': osint_configured,
-        'can_manage_assets': can_manage_assets,
-        'can_view_sensitive_data': can_view_sensitive,
-        'total_alertas_criticas': len(alert_cards),
-        'ultima_alerta_critica': ultima_alerta,
-        'criticidad_activos_alta': criticidad_activos_alta,
-    }
-    return render(request, 'monitoreo/index.html', context)
+
+@two_factor_required
+@require_soc_access
+@never_cache
+def dashboard_alertas(request):
+    return render(request, "monitoreo/alertas.html", _build_dashboard_context(request, "alertas"))
+
+
+@two_factor_required
+@require_soc_access
+@never_cache
+def dashboard_activos(request):
+    return render(request, "monitoreo/activos.html", _build_dashboard_context(request, "activos"))
+
+
+@two_factor_required
+@require_soc_access
+@never_cache
+def dashboard_osint(request):
+    return render(request, "monitoreo/osint.html", _build_dashboard_context(request, "osint"))
 
 @two_factor_required
 @require_asset_management
@@ -651,9 +732,9 @@ def admin_user_access(request):
                     "role_removed",
                     actor=request.user,
                     target_username=managed_user.username,
-                    details="Se retiraron todos los roles SOC del usuario.",
+                    details="Se retiraron todos los roles del Agente del usuario.",
                 )
-                messages.success(request, f"Se retiraron los roles SOC de {managed_user.username}.")
+                messages.success(request, f"Se retiraron los roles del Agente de {managed_user.username}.")
             else:
                 assign_soc_role(managed_user, role_name)
                 log_security_event(
@@ -726,9 +807,9 @@ def admin_user_access(request):
         "lockouts": lockouts,
         "role_options": [
             (ROLE_ADMIN, "Administrador"),
-            (ROLE_ANALYST, "Analista SOC"),
+            (ROLE_ANALYST, "Analista"),
             (ROLE_VIEWER, "Solo lectura"),
-            ("none", "Sin acceso SOC"),
+            ("none", "Sin acceso al Agente"),
         ],
         "is_admin_user": True,
     }

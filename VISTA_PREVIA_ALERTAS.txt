@@ -1,0 +1,213 @@
+# 🎨 VISTA PREVIA - CÓMO SE VEN LAS ALERTAS AHORA
+
+## Panel Principal (http://127.0.0.1:8000/)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          ALERTA CRÍTICA MÁS RECIENTE                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│ [95] [Critical] [Elevada] [05 May 2026 · 12:34:56]                 │
+│                                                                      │
+│ PRUEBA CONTROL GOOGLE DNS                                           │
+│                                                                      │
+│ ┌──────────────────────────────────────────────────────────────────┐│
+│ │ 🤖 Análisis de Machine Learning                                  ││
+│ │ • Accuracy: 0.93                                                 ││
+│ │ • F1 Score: 0.94                                                 ││
+│ │ • Riesgo: 59%                                                    ││
+│ │ • Criticidad: 4/5                                                ││
+│ │ • Severidad: Baja                                                ││
+│ │ • Ajuste Contextual: +29.4                                       ││
+│ └──────────────────────────────────────────────────────────────────┘│
+│                                                                      │
+│ 🔍 Contexto OSINT: VT: 62 · Abuse: 62 · OTX: 37                   │
+│                                                                      │
+│ Origen: 192.168.1.1  →  Destino: 8.8.8.8                           │
+│ OSINT Score: 45.50                                                  │
+│                                                                      │
+│ ┌──────────────────────────────────────────────────────────────────┐│
+│ │ 💡 Recomendación del Agente                                      ││
+│ │                                                                   ││
+│ │ Escalar al analista responsable para revision detallada.         ││
+│ └──────────────────────────────────────────────────────────────────┘│
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ACTIVIDAD RECIENTE (últimas 5 alertas)           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│ ● 05 May 2026 · 12:34:56                                            │
+│   PRUEBA CONTROL GOOGLE DNS                                         │
+│   Score 95 · Riesgo 59% · Criticidad 4/5                           │
+│                                                                      │
+│ ● 05 May 2026 · 11:22:33                                            │
+│   ALERTA SURICATA SQL INJECTION                                     │
+│   Score 85 · Riesgo 71% · Criticidad 5/5                           │
+│                                                                      │
+│ ● 04 May 2026 · 09:15:00                                            │
+│   DETECCIÓN PORT SCAN                                               │
+│   Score 72 · Riesgo 45% · Criticidad 3/5                           │
+│                                                                      │
+│ ● 03 May 2026 · 17:45:22                                            │
+│   ANOMALÍA TRÁFICO SALIENTE                                         │
+│   Score 65 · Riesgo 38% · Criticidad 3/5                           │
+│                                                                      │
+│ ● 02 May 2026 · 14:12:10                                            │
+│   INTENTO ACCESO NO AUTORIZADO                                      │
+│   Score 80 · Riesgo 62% · Criticidad 4/5                           │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Página de Alertas (http://127.0.0.1:8000/alertas/)
+
+```
+╔═════════════════════════════════════════════════════════════════════╗
+║                    ALERTAS EN TIEMPO REAL                           ║
+║  Información completa incluyendo ML metrics, OSINT scores...        ║
+╚═════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────┬──────────────────────────┬──────────────┐
+│                          │                          │              │
+│ 95                       │ 85                       │ 72           │
+│ 05 May 2026              │ 05 May 2026              │ 04 May 2026  │
+│ 12:34:56                 │ 11:22:33                 │ 09:15:00     │
+│                          │                          │              │
+│ PRUEBA CONTROL           │ ALERTA SURICATA SQL      │ DETECCIÓN    │
+│ GOOGLE DNS               │ INJECTION                │ PORT SCAN    │
+│                          │                          │              │
+│ [Critical] [Elevada]     │ [Critical] [Elevada]     │ [High] [Elev]│
+│                          │                          │              │
+│ Origen: 192.168.1.1      │ Origen: 192.168.1.50     │ Origen: ...  │
+│ Destino: 8.8.8.8         │ Destino: 10.0.0.1        │ Destino: ... │
+│                          │                          │              │
+│ ┌──────────────────────┐ │ ┌──────────────────────┐ │ ┌──────────┐│
+│ │ 🤖 ML: acc=0.93...   │ │ │ 🤖 ML: acc=0.92...   │ │ │ 🤖 ML... ││
+│ │ 📊 Riesgo: 59%       │ │ │ 📊 Riesgo: 71%       │ │ │ 📊 ...   ││
+│ │ ⚠️  Criticidad: 4/5   │ │ │ ⚠️  Criticidad: 5/5   │ │ │ ⚠️  ...  ││
+│ │ 🔴 Severidad: Baja   │ │ │ 🔴 Severidad: Alta   │ │ │ 🔴 ...   ││
+│ │ 🌐 OSINT: 45.5       │ │ │ 🌐 OSINT: 52.3       │ │ │ 🌐 ...   ││
+│ │ ⚡ AbuseIPDB: 62%     │ │ │ ⚡ AbuseIPDB: 78%     │ │ │ ⚡ ...    ││
+│ │ 📡 OTX: 37           │ │ │ 📡 OTX: 45           │ │ │ 📡 ...   ││
+│ │ 🔧 Ajuste: +29.4     │ │ │ 🔧 Ajuste: -5.2      │ │ │ 🔧 ...   ││
+│ └──────────────────────┘ │ └──────────────────────┘ │ └──────────┘│
+│                          │                          │              │
+│ 🔍 OSINT: VT · Abuse · OT│ 🔍 OSINT: VT · Abuse... │ 🔍 OSINT...  │
+│                          │                          │              │
+│ 💡 Recomendación:        │ 💡 Recomendación:        │ 💡 ...       │
+│ Escalar al analista      │ Investigar comportam...  │ Monitorear   │
+│ responsable...           │ anómalo inmediato...     │              │
+│                          │                          │              │
+└──────────────────────────┴──────────────────────────┴──────────────┘
+```
+
+## Tarjeta Individual Expandida
+
+```
+╔════════════════════════════════════════════════════════════════════╗
+║                         ALERTA DETALLADA                           ║
+╠════════════════════════════════════════════════════════════════════╣
+║                                                                    ║
+║ SCORE: 95                                    05 May 2026 12:34:56  ║
+║                                                                    ║
+║ PRUEBA CONTROL GOOGLE DNS                                         ║
+║                                                                    ║
+║ [Critical]     [Elevada]     [Baja]                               ║
+║                                                                    ║
+║ ┌────────────────────────────────────────────────────────────────┐║
+║ │ Origen: 192.168.1.1           Destino: 8.8.8.8                 │║
+║ └────────────────────────────────────────────────────────────────┘║
+║                                                                    ║
+║ ╔════════════════════════════════════════════════════════════════╗║
+║ ║ 🤖 ML: acc=0.93, f1=0.94                                       ║║
+║ ║ 📊 Riesgo: 59%                                                 ║║
+║ ║ ⚠️  Criticidad: 4/5                                             ║║
+║ ║ 🔴 Severidad: Baja                                             ║║
+║ ║ 🌐 OSINT Score: 45.5                                           ║║
+║ ║ ⚡ AbuseIPDB: 62%                                               ║║
+║ ║ 📡 OTX Pulses: 37                                              ║║
+║ ║ 🔧 Ajuste: +29.4                                               ║║
+║ ╚════════════════════════════════════════════════════════════════╝║
+║                                                                    ║
+║ 🔍 Contexto OSINT: VT: 62 · Abuse: 62 · OTX: 37                 ║
+║                                                                    ║
+║ ╔════════════════════════════════════════════════════════════════╗║
+║ ║ 💡 Recomendación del Agente                                    ║║
+║ ║                                                                ║║
+║ ║ Escalar al analista responsable para revision detallada.       ║║
+║ ║ Verificar GreyNoise RIOT status y patrones históricos.         ║║
+║ ╚════════════════════════════════════════════════════════════════╝║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
+```
+
+## Información Mostrada en Cada Alerta
+
+### Encabezado
+```
+[SCORE]  [FECHA]  [HORA]
+```
+- Score de prioridad (0-100) en color según criticidad
+- Fecha y hora de la alerta
+
+### Identificación
+```
+FIRMA DE LA ALERTA
+```
+- Nombre de la firma o evento detectado
+
+### Estado
+```
+[Severidad] [Prioridad] [...]
+```
+- Badges coloreados indicando el estado
+
+### IPs
+```
+Origen: X.X.X.X
+Destino: X.X.X.X
+```
+- Direcciones IP involucradas (enmascaradas si no tienes permisos)
+
+### Métricas ML (Bloque Destacado)
+```
+🤖 ML: acc=X.XX, f1=X.XX
+📊 Riesgo: XX%
+⚠️  Criticidad: X/5
+🔴 Severidad: [Label]
+🌐 OSINT Score: XX.X
+⚡ AbuseIPDB: XX%
+📡 OTX Pulses: XX
+🔧 Ajuste: ±XX.X
+```
+- Todos los parámetros ML extraídos de la explicación
+- Fácil de leer y entender
+
+### Contexto OSINT
+```
+🔍 OSINT: VT: XX · Abuse: XX · OTX: XX
+```
+- Resumen de principales fuentes OSINT
+
+### Recomendación
+```
+💡 Recomendación del Agente
+
+[Texto de recomendación generado automáticamente]
+```
+- Acción sugerida destacada visualmente
+
+## 🎯 Ventajas para el Analista
+
+✅ **Información Completa** - Todo lo importante en un solo lugar
+✅ **Formato Visual** - Fácil de leer y entender
+✅ **Priorización Clara** - Scores y colores indicativos
+✅ **Contexto OSINT** - No hay que buscar en otra página
+✅ **Recomendaciones** - Acciones sugeridas visibles
+✅ **Responsivo** - Se adapta a diferentes tamaños de pantalla
+
+---
+
+**Listo para usar**: http://127.0.0.1:8000/alertas/

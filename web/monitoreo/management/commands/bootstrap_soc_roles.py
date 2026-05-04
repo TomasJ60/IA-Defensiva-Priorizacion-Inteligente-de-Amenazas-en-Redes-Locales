@@ -5,7 +5,7 @@ from monitoreo.roles import ROLE_ADMIN, ROLE_ANALYST, ROLE_VIEWER
 
 
 class Command(BaseCommand):
-    help = "Crea los grupos base de acceso para el dashboard SOC."
+    help = "Crea los grupos base de acceso para la consola del Agente."
 
     def handle(self, *args, **options):
         for role in (ROLE_ADMIN, ROLE_ANALYST, ROLE_VIEWER):

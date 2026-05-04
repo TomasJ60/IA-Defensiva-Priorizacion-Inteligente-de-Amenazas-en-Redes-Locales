@@ -1,56 +1,29 @@
 <!DOCTYPE html>
-<html lang="es" data-bs-theme="dark">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acceso denegado | SOC IA Defensiva</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            min-height: 100vh;
-            margin: 0;
-            display: grid;
-            place-items: center;
-            color: #e7eef7;
-            font-family: 'Inter', sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(57, 180, 255, 0.14), transparent 20%),
-                radial-gradient(circle at top right, rgba(255, 107, 107, 0.12), transparent 18%),
-                linear-gradient(180deg, #061019 0%, #07131d 48%, #071018 100%);
-            padding: 24px;
-        }
-        .card {
-            width: min(560px, 100%);
-            padding: 28px;
-            border-radius: 24px;
-            border: 1px solid rgba(148, 163, 184, 0.16);
-            background: linear-gradient(180deg, rgba(11, 23, 34, 0.9) 0%, rgba(7, 18, 29, 0.96) 100%);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
-        }
-        .eyebrow { color: #8ea3b8; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; font-weight: 600; }
-        .title { font-family: 'Space Grotesk', sans-serif; font-size: 2.2rem; margin: 14px 0 12px; }
-        .copy { color: #8ea3b8; }
-        .btn-soc-outline {
-            min-height: 48px;
-            border-radius: 14px;
-            font-weight: 700;
-            border: 1px solid rgba(148, 163, 184, 0.16);
-            color: #e7eef7;
-            background: rgba(255, 255, 255, 0.03);
-        }
-    </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agente IA — Acceso denegado</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;display:grid;place-items:center;background:#080b0f;color:#dde4ed;font-family:'DM Sans',sans-serif;padding:24px}
+.card{width:min(560px,100%);background:#0f1318;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:30px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.eyebrow{font-size:11px;color:#5e6e82;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.title{font-size:26px;font-weight:600;margin-bottom:8px}
+.copy{font-size:13px;color:#8a9ab0;margin-bottom:14px;line-height:1.6}
+.btn-outline{display:block;width:100%;border-radius:8px;padding:12px;font-size:14px;font-weight:600;text-align:center;text-decoration:none;background:#151b24;color:#dde4ed;border:1px solid rgba(255,255,255,.07);margin-top:16px}
+</style>
 </head>
 <body>
-    <main class="card">
-        <div class="eyebrow"><i class="bi bi-shield-lock me-2"></i>Confidencialidad reforzada</div>
-        <h1 class="title">Acceso denegado</h1>
-        <p class="copy">Tu cuenta inicio sesion correctamente, pero no tiene un rol autorizado para esta operacion dentro del dashboard SOC.</p>
-        {% if role_label %}
-        <p class="copy">Rol detectado: <strong>{{ role_label }}</strong></p>
-        {% endif %}
-        <a href="{% url 'logout' %}" class="btn btn-soc-outline">Cerrar sesion</a>
-    </main>
+<main class="card">
+  <div class="eyebrow">Acceso restringido</div>
+  <h1 class="title">Acceso denegado</h1>
+  <p class="copy">Tu cuenta inicio sesion correctamente, pero no tiene un rol autorizado para esta operacion dentro de la consola del Agente.</p>
+  {% if role_label %}
+  <p class="copy">Rol detectado: <strong>{{ role_label }}</strong></p>
+  {% endif %}
+  <a href="{% url 'logout' %}" class="btn-outline">Cerrar sesion</a>
+</main>
 </body>
 </html>

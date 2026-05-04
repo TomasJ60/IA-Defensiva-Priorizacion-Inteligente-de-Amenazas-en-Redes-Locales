@@ -1,0 +1,130 @@
+{% extends "monitoreo/base_dashboard.html" %}
+{% block title %}Agente IA — Overview{% endblock %}
+{% block dashboard_content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Overview del Agente</div>
+    <div class="page-sub">Vista general para ayudar al analista a reducir fatiga por alertas y enfocarse primero en lo mas importante.</div>
+  </div>
+</div>
+
+<div class="g4">
+  <div class="mc">
+    <div class="mc-lbl">Alertas activas</div>
+    <div class="mc-val" style="color:var(--critical)">{{ total_alertas_criticas }}</div>
+    <div class="mc-sub">Casos que merecen revision inmediata.</div>
+    <div class="mc-bar"><div class="mc-bar-f" style="width:68%;background:var(--critical)"></div></div>
+  </div>
+  <div class="mc">
+    <div class="mc-lbl">Activos relacionados</div>
+    <div class="mc-val" style="color:var(--accent)">{{ activos_con_alertas|length }}</div>
+    <div class="mc-sub">Activos conectados con eventos observados.</div>
+    <div class="mc-bar"><div class="mc-bar-f" style="width:50%;background:var(--accent)"></div></div>
+  </div>
+  <div class="mc">
+    <div class="mc-lbl">Cobertura OSINT</div>
+    <div class="mc-val" style="color:var(--medium)">{{ osint_configured_count }}/4</div>
+    <div class="mc-sub">Fuentes listas para enriquecer contexto.</div>
+    <div class="mc-bar"><div class="mc-bar-f" style="width:{% widthratio osint_configured_count 4 100 %}%;background:var(--medium)"></div></div>
+  </div>
+  <div class="mc">
+    <div class="mc-lbl">Activos de alto impacto</div>
+    <div class="mc-val" style="color:var(--low)">{{ criticidad_activos_alta }}</div>
+    <div class="mc-sub">Criticidad 4 o 5 detectada en inventario.</div>
+    <div class="mc-bar"><div class="mc-bar-f" style="width:55%;background:var(--low)"></div></div>
+  </div>
+</div>
+
+<div class="g2">
+  <div class="card">
+    <div class="card-title">Alerta crítica más reciente</div>
+    {% if ultima_alerta_critica %}
+    <div class="actions" style="margin-bottom:12px">
+      <span class="badge {% if ultima_alerta_critica.priority_badge.tone == 'critical' %}bc{% elif ultima_alerta_critica.priority_badge.tone == 'high' %}bh{% elif ultima_alerta_critica.priority_badge.tone == 'medium' %}bm{% else %}bl{% endif %}">
+        {{ ultima_alerta_critica.priority_badge.label }}
+      </span>
+      <span class="score-badge {% if ultima_alerta_critica.prioridad_ia >= 95 %}sc-crit{% elif ultima_alerta_critica.prioridad_ia >= 85 %}sc-high{% elif ultima_alerta_critica.prioridad_ia >= 70 %}sc-med{% else %}sc-low{% endif %}">
+        {{ ultima_alerta_critica.prioridad_ia|floatformat:0 }} pts
+      </span>
+      <span class="badge bi">{{ ultima_alerta_critica.fecha_display }} · {{ ultima_alerta_critica.hora_display }}</span>
+    </div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:12px">{{ ultima_alerta_critica.firma }}</div>
+    
+    <!-- ML Metrics Detalladas -->
+    {% if ultima_alerta_critica.ml_metrics.accuracy %}
+    <div style="background:var(--bg3); border-left:3px solid var(--accent); padding:12px; border-radius:6px; margin-bottom:12px; font-size:12px; line-height:1.6;">
+      <div style="font-weight:600; margin-bottom:6px;">🤖 Análisis de Machine Learning</div>
+      <div><strong>Accuracy:</strong> {{ ultima_alerta_critica.ml_metrics.accuracy }} · <strong>F1:</strong> {{ ultima_alerta_critica.ml_metrics.f1 }}</div>
+      {% if ultima_alerta_critica.ml_metrics.risk_percentage %}<div><strong>Riesgo:</strong> {{ ultima_alerta_critica.ml_metrics.risk_percentage }}%</div>{% endif %}
+      {% if ultima_alerta_critica.ml_metrics.criticidad %}<div><strong>Criticidad:</strong> {{ ultima_alerta_critica.ml_metrics.criticidad }}/5</div>{% endif %}
+      {% if ultima_alerta_critica.ml_metrics.severidad %}<div><strong>Severidad:</strong> {{ ultima_alerta_critica.ml_metrics.severidad }}</div>{% endif %}
+      {% if ultima_alerta_critica.ml_metrics.ajuste_contextual %}<div><strong>Ajuste Contextual:</strong> {{ ultima_alerta_critica.ml_metrics.ajuste_contextual|floatformat:1 }}</div>{% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- OSINT Context -->
+    {% if ultima_alerta_critica.osint_context %}
+    <div style="background:var(--bg4); padding:10px 12px; border-radius:6px; margin-bottom:12px; font-size:12px; color:var(--muted2);">
+      <strong>🔍 Contexto OSINT:</strong> {{ ultima_alerta_critica.osint_context }}
+    </div>
+    {% endif %}
+    
+    <!-- IPs -->
+    <div class="fact-grid">
+      <div class="fact">
+        <div class="fact-lbl">Origen y destino</div>
+        <div class="fact-val" style="font-family:var(--mono)">{{ ultima_alerta_critica.ip_origen_display }} → {{ ultima_alerta_critica.ip_destino_display }}</div>
+      </div>
+      <div class="fact">
+        <div class="fact-lbl">OSINT Score</div>
+        <div class="fact-val" style="font-family:var(--mono)">{{ ultima_alerta_critica.osint_score|floatformat:2 }}</div>
+      </div>
+    </div>
+    
+    <!-- Recomendación -->
+    <div style="background:rgba(77,166,255,0.1); border-left:3px solid var(--accent); padding:10px 12px; border-radius:6px; font-size:12px; margin-bottom:12px;">
+      <div style="font-weight:600; margin-bottom:5px;">💡 Recomendación del Agente</div>
+      <div>{{ ultima_alerta_critica.recomendacion_display }}</div>
+    </div>
+    
+    {% else %}
+    <div class="empty">No hay alertas criticas recientes para destacar en este momento. ✨ El sistema está funcionando correctamente.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">Actividad reciente (últimas 5 alertas)</div>
+    <div class="timeline">
+      {% for alerta in alertas_criticas_recientes|slice:":5" %}
+      <div class="tl-item">
+        <div class="tl-dot" style="background:{% if alerta.prioridad_ia >= 95 %}var(--critical){% elif alerta.prioridad_ia >= 85 %}var(--high){% elif alerta.prioridad_ia >= 70 %}var(--medium){% else %}var(--low){% endif %}"></div>
+        <div class="tl-time">{{ alerta.fecha_display }} · {{ alerta.hora_display }}</div>
+        <div class="tl-txt" style="font-weight:600">{{ alerta.firma|truncatechars:70 }}</div>
+        <div class="tl-src">
+          Score {{ alerta.prioridad_ia|floatformat:0 }}
+          {% if alerta.ml_metrics.risk_percentage %} · Riesgo {{ alerta.ml_metrics.risk_percentage }}%{% endif %}
+          {% if alerta.ml_metrics.criticidad %} · Criticidad {{ alerta.ml_metrics.criticidad }}/5{% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty">Todavia no hay actividad destacada para esta linea de tiempo.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block dashboard_scripts %}
+<script>
+let lastAlertId = {{ ultima_alerta_critica.id|default:"null" }};
+setInterval(() => {
+  fetch('{% url "check_alerts" %}')
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.id && lastAlertId !== data.id) {
+        location.reload();
+      }
+    })
+    .catch(() => {});
+}, 30000);
+</script>
+{% endblock %}

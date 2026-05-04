@@ -49,7 +49,7 @@ def verificar_totp(secret, token, window=6, step=30, digits=6):
     return False
 
 
-def construir_otpauth_uri(secret, username, issuer="SOC IA Defensiva"):
+def construir_otpauth_uri(secret, username, issuer="Agente IA"):
     label = quote(f"{issuer}:{username}")
     issuer_param = quote(issuer)
     return f"otpauth://totp/{label}?secret={secret}&issuer={issuer_param}"
