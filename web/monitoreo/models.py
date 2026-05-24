@@ -21,6 +21,11 @@ class Alerta(models.Model):
     otx_tags = models.TextField(null=True, blank=True)
     otx_malware_families = models.TextField(null=True, blank=True)
     osint_score = models.FloatField(null=True, blank=True)
+    tipo_trafico = models.CharField(max_length=32, null=True, blank=True)
+    payload_malicioso = models.BooleanField(null=True, blank=True)
+    indicadores_malware = models.TextField(null=True, blank=True)
+    detalles_payload = models.TextField(null=True, blank=True)
+    fecha_analisis_ia = models.DateTimeField(null=True, blank=True)
     prioridad_ia = models.FloatField(null=True, blank=True)
     explicacion = models.TextField(null=True, blank=True)
     recomendacion = models.TextField(null=True, blank=True)
@@ -36,6 +41,24 @@ class Activo(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.ip})"
+
+
+class MonitoredEndpoint(models.Model):
+    nombre = models.CharField(max_length=100)
+    ip = models.GenericIPAddressField(unique=True)
+    descripcion = models.CharField(max_length=255, blank=True)
+    is_enabled = models.BooleanField(default=False)
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    last_is_reachable = models.BooleanField(null=True, blank=True)
+    last_latency_ms = models.FloatField(null=True, blank=True)
+    last_message = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["nombre", "ip"]
+
+    def __str__(self):
+        estado = "encendido" if self.is_enabled else "apagado"
+        return f"{self.nombre} ({self.ip}) - {estado}"
 
 
 class TwoFactorDevice(models.Model):
@@ -99,3 +122,20 @@ class AuthLockout(models.Model):
 
     def __str__(self):
         return f"{self.scope}:{self.subject} ({self.failed_attempts})"
+
+
+class SuricataConfig(models.Model):
+    interfaces = models.TextField(help_text="Interfaces de red a monitorear, separadas por comas (ej: eth0,eth1)")
+    is_active = models.BooleanField(default=True, help_text="Si la configuración está activa")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuración Suricata"
+        verbose_name_plural = "Configuraciones Suricata"
+
+    def __str__(self):
+        return f"Suricata Config - Interfaces: {self.interfaces}"
+
+    @property
+    def interface_list(self):
+        return [iface.strip() for iface in self.interfaces.split(',') if iface.strip()]

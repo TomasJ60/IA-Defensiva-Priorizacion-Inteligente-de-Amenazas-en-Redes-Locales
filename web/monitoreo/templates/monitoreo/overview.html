@@ -54,7 +54,9 @@
     {% if ultima_alerta_critica.ml_metrics.accuracy %}
     <div style="background:var(--bg3); border-left:3px solid var(--accent); padding:12px; border-radius:6px; margin-bottom:12px; font-size:12px; line-height:1.6;">
       <div style="font-weight:600; margin-bottom:6px;">🤖 Análisis de Machine Learning</div>
-      <div><strong>Accuracy:</strong> {{ ultima_alerta_critica.ml_metrics.accuracy }} · <strong>F1:</strong> {{ ultima_alerta_critica.ml_metrics.f1 }}</div>
+      <div><strong>Accuracy:</strong> {{ ultima_alerta_critica.ml_metrics.accuracy|floatformat:1 }}% · <strong>F1:</strong> {{ ultima_alerta_critica.ml_metrics.f1|floatformat:1 }}%</div>
+      {% if ultima_alerta_critica.ml_metrics.precision %}<div><strong>Precision:</strong> {{ ultima_alerta_critica.ml_metrics.precision|floatformat:1 }}% · <strong>Recall:</strong> {{ ultima_alerta_critica.ml_metrics.recall|floatformat:1 }}%</div>{% endif %}
+      {% if ultima_alerta_critica.ml_metrics.dataset_rows %}<div><strong>Muestras:</strong> {{ ultima_alerta_critica.ml_metrics.dataset_rows }} totales · {{ ultima_alerta_critica.ml_metrics.train_rows }} entrenamiento · {{ ultima_alerta_critica.ml_metrics.test_rows }} prueba</div>{% endif %}
       {% if ultima_alerta_critica.ml_metrics.risk_percentage %}<div><strong>Riesgo:</strong> {{ ultima_alerta_critica.ml_metrics.risk_percentage }}%</div>{% endif %}
       {% if ultima_alerta_critica.ml_metrics.criticidad %}<div><strong>Criticidad:</strong> {{ ultima_alerta_critica.ml_metrics.criticidad }}/5</div>{% endif %}
       {% if ultima_alerta_critica.ml_metrics.severidad %}<div><strong>Severidad:</strong> {{ ultima_alerta_critica.ml_metrics.severidad }}</div>{% endif %}
@@ -66,6 +68,14 @@
     {% if ultima_alerta_critica.osint_context %}
     <div style="background:var(--bg4); padding:10px 12px; border-radius:6px; margin-bottom:12px; font-size:12px; color:var(--muted2);">
       <strong>🔍 Contexto OSINT:</strong> {{ ultima_alerta_critica.osint_context }}
+    </div>
+    {% endif %}
+
+    {% if ultima_alerta_critica.payload_malicioso or ultima_alerta_critica.indicadores_malware %}
+    <div style="background:rgba(232,65,74,0.10); border-left:3px solid var(--critical); padding:10px 12px; border-radius:6px; margin-bottom:12px; font-size:12px;">
+      <div style="font-weight:600; margin-bottom:5px;">Indicadores de malware</div>
+      <div><strong>Payload malicioso:</strong> {% if ultima_alerta_critica.payload_malicioso %}Sí{% else %}No{% endif %}</div>
+      <div><strong>Tipo detectado:</strong> {% if ultima_alerta_critica.indicadores_malware %}{{ ultima_alerta_critica.indicadores_malware|join:", " }}{% else %}Sin indicador específico{% endif %}</div>
     </div>
     {% endif %}
     

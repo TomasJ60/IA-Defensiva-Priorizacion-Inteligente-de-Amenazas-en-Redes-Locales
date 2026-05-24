@@ -1,3 +1,9 @@
+import ipaddress
+import json
+import re
+import subprocess
+import tldextract
+from pathlib import Path
 from functools import wraps
 
 from django.conf import settings
@@ -19,7 +25,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from .audit import log_security_event
-from .models import Activo, Alerta, AuthLockout, SecurityEvent, TwoFactorDevice
+from .models import Activo, Alerta, AuthLockout, MonitoredEndpoint, SecurityEvent, TwoFactorDevice, SuricataConfig
 from .roles import (
     ROLE_ADMIN,
     ROLE_ANALYST,
@@ -49,6 +55,61 @@ SESSION_2FA_USER_KEY = "two_factor_user_id"
 SESSION_2FA_PASSED_KEY = "two_factor_passed"
 SESSION_POST_2FA_REDIRECT_KEY = "post_2fa_redirect"
 TWO_FACTOR_ISSUER = "Agente IA"
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+MODEL_METRICS_PATH = PROJECT_DIR / "data" / "model_metrics.json"
+
+
+def _get_enabled_monitored_ips():
+    return list(
+        MonitoredEndpoint.objects.filter(is_enabled=True).values_list("ip", flat=True)
+    )
+
+def _filter_alertas_for_enabled_targets(queryset):
+    # enabled_ips = _get_enabled_monitored_ips()
+    # if not enabled_ips:
+    #    return queryset
+
+    #query = Q()
+    #for ip in enabled_ips:
+    #    query |= Q(ip_origen=ip) | Q(ip_destino=ip)
+    return queryset
+
+
+def _run_ping_check(ip_address):
+    try:
+        result = subprocess.run(
+            ["ping", "-c", "1", "-W", "1", ip_address],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "reachable": False,
+            "latency_ms": None,
+            "message": f"Ping fallido: {exc}",
+        }
+
+    output = f"{result.stdout}\n{result.stderr}"
+    latency_match = re.search(r"time=([0-9]+(?:\.[0-9]+)?)\s*ms", output)
+    latency_ms = float(latency_match.group(1)) if latency_match else None
+
+    if result.returncode == 0:
+        message = "Conectividad verificada correctamente."
+        if latency_ms is not None:
+            message = f"Conectividad verificada ({latency_ms:.2f} ms)."
+        return {
+            "reachable": True,
+            "latency_ms": latency_ms,
+            "message": message,
+        }
+
+    return {
+        "reachable": False,
+        "latency_ms": latency_ms,
+        "message": "Sin respuesta al ping.",
+    }
 
 
 def _severity_badge(value):
@@ -93,16 +154,13 @@ def _safe_localtime(value):
 
 
 def _extract_ml_metrics(explanation):
-    """Extrae métricas ML de la explicación"""
-    import re
+    """Extrae métricas desde la explicación IA."""
     metrics = {
         'accuracy': None,
         'f1': None,
         'risk_percentage': None,
         'criticidad': None,
         'osint_score': None,
-        'abuse_percentage': None,
-        'otx_pulses': None,
         'ajuste_contextual': None,
         'severidad': None,
     }
@@ -111,62 +169,459 @@ def _extract_ml_metrics(explanation):
         return metrics
     
     try:
-        # Extraer accuracy y f1
-        ml_match = re.search(r'ML\s*\(\s*acc\s*=\s*(\d+\.\d+)\s*,\s*f1\s*=\s*(\d+\.\d+)', explanation)
-        if ml_match:
-            metrics['accuracy'] = float(ml_match.group(1))
-            metrics['f1'] = float(ml_match.group(2))
-        
-        # Extraer riesgo (porcentaje)
-        risk_match = re.search(r'(\d+)%\s+riesgo', explanation)
+        # Extraer porcentaje de riesgo (ej: 96.8%)
+        risk_match = re.search(r'probabilidad de amenaza del ([\d.]+)%', explanation, re.IGNORECASE)
         if risk_match:
-            metrics['risk_percentage'] = int(risk_match.group(1))
+            metrics['risk_percentage'] = float(risk_match.group(1))
         
-        # Extraer criticidad
-        crit_match = re.search(r'Criticidad:\s*(\d+)/5', explanation)
-        if crit_match:
-            metrics['criticidad'] = int(crit_match.group(1))
-        
-        # Extraer OSINT score - evitar capturar puntos de oración
-        osint_match = re.search(r'OSINT\s+score:\s*(\d+\.\d+)(?:\s|\.)', explanation)
+        # Extraer OSINT (ej: OSINT (45.0))
+        osint_match = re.search(r'OSINT \(([\d.]+)\)', explanation, re.IGNORECASE)
         if osint_match:
             metrics['osint_score'] = float(osint_match.group(1))
         
-        # Extraer AbuseIPDB
-        abuse_match = re.search(r'AbuseIPDB:\s*(\d+)%', explanation)
-        if abuse_match:
-            metrics['abuse_percentage'] = int(abuse_match.group(1))
-        
-        # Extraer OTX pulses
-        otx_match = re.search(r'OTX\s+pulses:\s*(\d+)', explanation)
-        if otx_match:
-            metrics['otx_pulses'] = int(otx_match.group(1))
-        
-        # Extraer ajuste contextual
-        ajuste_match = re.search(r'Ajuste\s+contextual:\s*([-+]?\d+\.\d+)', explanation)
-        if ajuste_match:
-            metrics['ajuste_contextual'] = float(ajuste_match.group(1))
-        
-        # Extraer severidad
-        sev_match = re.search(r'Severidad:\s*(\w+)', explanation)
-        if sev_match:
-            metrics['severidad'] = sev_match.group(1)
-    except (ValueError, AttributeError, IndexError):
-        # Si hay algún error en la parsing, devolver métricas vacías
+        # Extraer Criticidad (ej: criticidad del activo (5/5))
+        crit_match = re.search(r'criticidad del activo \((\d+)/5\)', explanation, re.IGNORECASE)
+        if crit_match:
+            metrics['criticidad'] = int(crit_match.group(1))
+
+        # Extraer accuracy y f1 si están incluidos en la explicación
+        acc_match = re.search(r'\baccuracy\b[:=]?\s*([\d.]+)\s*%?', explanation, re.IGNORECASE)
+        if acc_match:
+            accuracy_value = float(acc_match.group(1))
+            if accuracy_value <= 1:
+                accuracy_value *= 100
+            metrics['accuracy'] = round(accuracy_value, 1)
+
+        f1_match = re.search(r'\bf1\b[:=]?\s*([\d.]+)\s*%?', explanation, re.IGNORECASE)
+        if f1_match:
+            f1_value = float(f1_match.group(1))
+            if f1_value <= 1:
+                f1_value *= 100
+            metrics['f1'] = round(f1_value, 1)
+    except Exception:
         pass
     
     return metrics
 
 
-def _format_alert_for_dashboard(alerta, can_view_sensitive):
+def _load_model_metrics():
+    metrics = {
+        "accuracy": None,
+        "f1": None,
+        "precision": None,
+        "recall": None,
+        "train_rows": None,
+        "test_rows": None,
+        "dataset_rows": None,
+    }
+
+    try:
+        if not MODEL_METRICS_PATH.exists():
+            return metrics
+
+        with MODEL_METRICS_PATH.open("r", encoding="utf-8") as fh:
+            raw_metrics = json.load(fh)
+
+        for key in ("accuracy", "f1", "precision", "recall"):
+            value = raw_metrics.get(key)
+            if value is None:
+                continue
+            value = float(value)
+            if value <= 1:
+                value *= 100
+            metrics[key] = round(value, 2)
+
+        for key in ("train_rows", "test_rows", "dataset_rows"):
+            value = raw_metrics.get(key)
+            if value is not None:
+                metrics[key] = int(value)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+
+    return metrics
+
+
+def _infer_service_from_signature(signature):
+    """Inferir un servicio/dispositivo conocido a partir de la firma."""
+    if not signature:
+        return None
+
+    lower = signature.lower()
+    providers = [
+        ("youtube", "YouTube"),
+        ("google", "Google"),
+        ("cloudflare", "Cloudflare"),
+        ("microsoft", "Microsoft"),
+        ("amazon", "Amazon"),
+        ("aws", "AWS"),
+        ("azure", "Azure"),
+        ("facebook", "Facebook"),
+        ("apple", "Apple"),
+        ("linkedin", "LinkedIn"),
+        ("twitter", "Twitter"),
+        ("dropbox", "Dropbox"),
+        ("slack", "Slack"),
+        ("github", "GitHub"),
+        ("gmail", "Gmail"),
+    ]
+
+    for token, label in providers:
+        if token in lower:
+            return label
+
+    # Detectar firmas comunes de tráfico benigno que no incluyen dominio explícito.
+    if "web navigation" in lower or "trusted domain" in lower:
+        return "Navegación Web"
+    if "legitimate cloud service" in lower or "cloud service" in lower:
+        return "Servicio en la nube"
+    if "reserved internal ssh traffic" in lower or "ssh traffic" in lower:
+        return "SSH Interno"
+    if "internal ssh" in lower:
+        return "SSH Interno"
+    if "trusted" in lower and "domain" in lower:
+        return "Dominio confiable"
+    if "dns query" in lower:
+        return "Consulta DNS"
+
+    fallback_domain_match = re.search(
+        r"\b([a-z0-9-]+\.(?:com|net|org|io|cloud|tech|app|site|dev|es|mx|uk|gov|edu|biz|info|co|tv|me))\b",
+        lower,
+    )
+    if fallback_domain_match:
+        return fallback_domain_match.group(1)
+
+    service_match = re.search(r"\b([a-z0-9]{3,})\s+(dns|http|ssl|tls|ssh|smtp|ftp|icmp)\b", lower)
+    if service_match:
+        return service_match.group(1).title()
+
+    return None
+
+
+def _extract_primary_domain(text):
+    """
+    Extrae el dominio principal real desde eventos DNS.
+    """
+    if not text:
+        return None
+
+    patterns = [
+        r"rrname':\s*'([^']+)'",
+        r"\[Dominio:\s*([^\]]+)\]",
+        r"\[Host:\s*([^\]]+)\]",
+        r"\[SNI:\s*([^\]]+)\]",
+        r"hostname[:=]\s*([^\s,;]+)",
+        r"domain[:=]\s*([^\s,;]+)",
+        r"host[:=]\s*([^\s,;]+)",
+        r"https?://([^\s/]+)",
+        r"\b([a-z0-9-]+\.(?:com|net|org|io|cloud|tech|app|site|dev|es|mx|uk|gov|edu|biz|info|co|tv|me))\b",
+    ]
+
+    raw_domain = None
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            raw_domain = match.group(1).lower().strip()
+            break
+
+    if not raw_domain:
+        return None
+
+    raw_domain = raw_domain.rstrip(".")
+    raw_domain = re.sub(r":\d+$", "", raw_domain)
+
+    extracted = tldextract.extract(raw_domain)
+
+    if not extracted.domain or not extracted.suffix:
+        return raw_domain
+
+    return f"{extracted.domain}.{extracted.suffix}"
+
+
+def _normalize_text(value):
+    return (value or "").strip().lower()
+
+
+def _build_endpoint_index():
+    activos = {
+        str(activo.ip): {"name": activo.nombre, "kind": "activo"}
+        for activo in Activo.objects.all().only("ip", "nombre")
+    }
+    monitoreados = {
+        str(endpoint.ip): {"name": endpoint.nombre, "kind": "monitoreado"}
+        for endpoint in MonitoredEndpoint.objects.all().only("ip", "nombre")
+    }
+    return {"activos": activos, "monitoreados": monitoreados}
+
+
+def _sync_asset_and_endpoint_names(ip, nombre):
+    if not ip or not nombre:
+        return
+    Activo.objects.filter(ip=ip).update(nombre=nombre)
+    MonitoredEndpoint.objects.filter(ip=ip).update(nombre=nombre)
+
+
+def _sync_enabled_monitored_endpoints_into_assets():
+    for endpoint in MonitoredEndpoint.objects.filter(is_enabled=True).only("ip", "nombre"):
+        Activo.objects.get_or_create(
+            ip=endpoint.ip,
+            defaults={
+                "nombre": endpoint.nombre or f"Endpoint {endpoint.ip}",
+                "criticidad": 3,
+            },
+        )
+        # Si el activo ya existía, no sobreescribimos su criticidad.
+        Activo.objects.filter(ip=endpoint.ip).update(nombre=endpoint.nombre or f"Endpoint {endpoint.ip}")
+
+
+def _parse_indicator_list(raw_value):
+    if not raw_value:
+        return []
+    return [item.strip() for item in str(raw_value).split(",") if item.strip()]
+
+
+def _resolve_endpoint(ip_value, endpoint_index):
+    ip_value = (ip_value or "").strip()
+    if not ip_value:
+        return {
+            "ip": None,
+            "name": None,
+            "kind": None,
+            "display": "Sin IP",
+            "display_with_ip": "Sin IP",
+        }
+
+    endpoint = (
+        endpoint_index["activos"].get(ip_value)
+        or endpoint_index["monitoreados"].get(ip_value)
+        or {}
+    )
+    name = endpoint.get("name")
+    kind = endpoint.get("kind")
+    display = f"{name} ({ip_value})" if name else ip_value
+
+    return {
+        "ip": ip_value,
+        "name": name,
+        "kind": kind,
+        "display": display,
+        "display_with_ip": display,
+    }
+
+
+def _is_private_ip(ip_value):
+    try:
+        return ipaddress.ip_address((ip_value or "").strip()).is_private
+    except ValueError:
+        return False
+
+
+def _build_benign_group_key(alerta, osint_context_data):
+    primary_domain = _normalize_text(osint_context_data.get("primary_domain"))
+    if primary_domain in {"", "n/a"}:
+        primary_domain = ""
+
+    traffic_type = _normalize_text(osint_context_data.get("traffic_type"))
+    source_ip = _normalize_text(alerta.ip_origen)
+    destination_ip = _normalize_text(alerta.ip_destino)
+    cleaned_signature = _normalize_text(_clean_dns_signature(alerta.firma))
+    fallback_name = _normalize_text(osint_context_data.get("service_detected"))
+
+    return (
+        source_ip or "sin-origen",
+        destination_ip or "sin-destino",
+        traffic_type or "sin-tipo",
+        primary_domain or fallback_name or cleaned_signature or "sin-firma",
+    )
+
+
+def _is_benign_group_candidate(alerta, osint_context_data):
+    prioridad = alerta.prioridad_ia or 0
+    severidad = alerta.severidad if alerta.severidad is not None else 3
+    service_name = (osint_context_data.get("service_detected") or "").strip().lower()
+    traffic_type = (osint_context_data.get("traffic_type") or "").strip().upper()
+    has_malicious_osint = bool(alerta.vt_malicious or alerta.vt_suspicious)
+    generic_signature = _normalize_text(alerta.firma) in {"", "alerta", "evento de red"}
+    same_flow_ip_only = (
+        osint_context_data.get("primary_domain") in (None, "", "N/A")
+        and bool(_normalize_text(alerta.ip_destino))
+    )
+
+    known_benign_services = {
+        "google", "youtube", "cloudflare", "microsoft", "aws", "azure",
+        "amazon", "github", "slack", "dropbox", "facebook", "apple",
+        "linkedin", "gmail", "8.8.8.8", "1.1.1.1",
+    }
+
+    if has_malicious_osint:
+        return False
+
+    if prioridad < 25:
+        return True
+
+    if severidad <= 3 and prioridad < 45:
+        return True
+
+    if service_name in known_benign_services and prioridad < 60:
+        return True
+
+    if same_flow_ip_only and generic_signature and traffic_type in {"DNS", "HTTP", "TLS/SSL"} and prioridad < 50:
+        return True
+
+    return False
+
+
+def _clean_dns_signature(signature):
+    """
+    Limpia firmas DNS horribles de Suricata
+    y extrae el dominio real.
+    """
+    if not signature:
+        return "DNS Query"
+
+    try:
+        primary_domain = _extract_primary_domain(signature)
+        if primary_domain:
+            return f"DNS Query - {primary_domain}"
+
+    except Exception:
+        pass
+
+    return signature
+
+
+def _is_whitelisted_domain(domain):
+    """
+    Verifica si un dominio está en lista blanca.
+    """
+    if not domain:
+        return False
+    return False
+
+
+def _build_osint_context(alerta, endpoint_index=None):
+    """
+    Construye contexto OSINT seguro para el dashboard.
+    """
+    firma = (alerta.firma or "").lower()
+    
+    # Extraer el dominio REAL desde la firma usando tldextract
+    primary_domain = _extract_primary_domain(alerta.firma)
+    inferred_service = _infer_service_from_signature(alerta.firma)
+
+    # Prioridad 1: dato real guardado por el agente. Prioridad 2: inferencia por firma.
+    traffic_type = (getattr(alerta, "tipo_trafico", None) or "").strip()
+    if not traffic_type:
+        traffic_type = "Desconocido"
+        if re.search(r"\bdns\b", firma):
+            traffic_type = "DNS"
+        elif re.search(r"\bhttps?\b|web navigation|http", firma):
+            traffic_type = "HTTP"
+        elif re.search(r"\btls\b|\bssl\b|tls handshake|ssl handshake", firma):
+            traffic_type = "TLS/SSL"
+        elif re.search(r"\bicmp\b", firma):
+            traffic_type = "ICMP"
+        elif re.search(r"\bssh\b", firma):
+            traffic_type = "SSH"
+        elif re.search(r"\bsmtp\b", firma):
+            traffic_type = "SMTP"
+        elif re.search(r"\bftp\b", firma):
+            traffic_type = "FTP"
+
+    source = _resolve_endpoint(alerta.ip_origen, endpoint_index or {"activos": {}, "monitoreados": {}})
+    destination = _resolve_endpoint(alerta.ip_destino, endpoint_index or {"activos": {}, "monitoreados": {}})
+
+    if primary_domain:
+        service_detected = primary_domain
+    elif destination["name"]:
+        service_detected = destination["name"]
+    elif source["name"]:
+        service_detected = source["name"]
+    elif alerta.ip_destino and not _is_private_ip(alerta.ip_destino):
+        service_detected = alerta.ip_destino
+    else:
+        service_detected = inferred_service or "No identificado"
+
+    source_label = source["display"]
+    destination_label = destination["display"]
+
+    # Reputación OSINT - solo datos reales de la alerta
+    reputation_parts = []
+    if alerta.vt_malicious:
+        reputation_parts.append(f"VT malicious: {alerta.vt_malicious}")
+    if alerta.vt_suspicious:
+        reputation_parts.append(f"VT suspicious: {alerta.vt_suspicious}")
+    if alerta.abuse_confidence:
+        reputation_parts.append(f"AbuseIPDB: {alerta.abuse_confidence}%")
+    if alerta.otx_pulse_count:
+        reputation_parts.append(f"OTX pulses: {alerta.otx_pulse_count}")
+    if alerta.osint_score is not None:
+        reputation_parts.append(f"OSINT score: {alerta.osint_score}")
+
+    osint_reputation = " | ".join(reputation_parts) if reputation_parts else "Sin datos OSINT"
+
+    # Riesgo basado SOLO en la prioridad IA
+    risk_score = alerta.prioridad_ia or 0
+    if risk_score >= 90:
+        traffic_risk = "CRITICO"
+    elif risk_score >= 70:
+        traffic_risk = "ALTO"
+    elif risk_score >= 40:
+        traffic_risk = "MEDIO"
+    else:
+        traffic_risk = "BAJO"
+
+    context_summary = (
+        f"Origen: {source_label} | "
+        f"Destino: {destination_label} | "
+        f"Dominio: {primary_domain or alerta.ip_destino or 'No identificado'} | "
+        f"Tipo: {traffic_type} | "
+        f"Riesgo: {traffic_risk}"
+    )
+
+    return {
+        "service_detected": service_detected,
+        "primary_domain": primary_domain or alerta.ip_destino or "N/A",
+        "traffic_type": traffic_type,
+        "osint_reputation": osint_reputation,
+        "traffic_risk": traffic_risk,
+        "is_whitelisted": False,
+        "summary": context_summary,
+        "source": source,
+        "destination": destination,
+        "source_label": source_label,
+        "destination_label": destination_label,
+        "source_name": source["name"] or "No identificado",
+        "destination_name": destination["name"] or "No identificado",
+        "source_is_private": _is_private_ip(alerta.ip_origen),
+        "destination_is_private": _is_private_ip(alerta.ip_destino),
+    }
+
+
+def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None):
     fecha_local = _safe_localtime(alerta.fecha)
     severity = _severity_badge(alerta.severidad)
     priority = _priority_badge(alerta.prioridad_ia)
-    explanation = alerta.explicacion or "Sin explicacion generada todavia."
-    recommendation = alerta.recomendacion or "Escalar al analista responsable para revision detallada."
     
-    # Extraer métricas ML
+    # Texto dinámico mientras la IA procesa
+    if alerta.prioridad_ia is None:
+        explanation = "Procesando analisis IA..."
+        recommendation = "Pendiente de recomendacion IA..."
+    else:
+        explanation = alerta.explicacion or "Sin explicacion generada todavia."
+        recommendation = alerta.recomendacion or "Escalar al analista responsable para revision detallada."
+    
     ml_metrics = _extract_ml_metrics(explanation)
+    model_metrics = _load_model_metrics()
+    if ml_metrics["accuracy"] is None:
+        ml_metrics["accuracy"] = model_metrics["accuracy"]
+    if ml_metrics["f1"] is None:
+        ml_metrics["f1"] = model_metrics["f1"]
+    ml_metrics["precision"] = model_metrics["precision"]
+    ml_metrics["recall"] = model_metrics["recall"]
+    ml_metrics["train_rows"] = model_metrics["train_rows"]
+    ml_metrics["test_rows"] = model_metrics["test_rows"]
+    ml_metrics["dataset_rows"] = model_metrics["dataset_rows"]
+    osint_context_data = _build_osint_context(alerta, endpoint_index=endpoint_index)
 
     if not can_view_sensitive:
         explanation = "Detalle restringido para este rol. Revisa con un analista o un administrador."
@@ -182,14 +637,15 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive):
         fecha_display = "Sin fecha"
         hora_display = "--:--:--"
 
-    # Contexto OSINT resumido
     osint_context = []
     if alerta.vt_malicious or alerta.vt_suspicious or alerta.vt_reputation:
         osint_context.append(f"VT: {alerta.vt_malicious or '-'}")
-    if alerta.abuse_confidence:
+    if alerta.abuse_confidence is not None:
         osint_context.append(f"Abuse: {alerta.abuse_confidence}")
     if alerta.otx_pulse_count:
         osint_context.append(f"OTX: {alerta.otx_pulse_count}")
+
+    repeticiones = getattr(alerta, '_repeticiones', 1)
 
     return {
         "id": alerta.id,
@@ -200,7 +656,11 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive):
         "ip_destino": alerta.ip_destino,
         "ip_origen_display": alerta.ip_origen if can_view_sensitive else "Protegida",
         "ip_destino_display": alerta.ip_destino if can_view_sensitive else "Protegida",
-        "firma": alerta.firma or "Firma no disponible",
+        "source_label": osint_context_data["source_label"] if can_view_sensitive else osint_context_data["source_name"],
+        "destination_label": osint_context_data["destination_label"] if can_view_sensitive else osint_context_data["destination_name"],
+        "source_name": osint_context_data["source_name"],
+        "destination_name": osint_context_data["destination_name"],
+        "firma": _clean_dns_signature(alerta.firma),
         "severidad": alerta.severidad,
         "severity_badge": severity,
         "priority_badge": priority,
@@ -209,67 +669,103 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive):
         "reputacion_osint": alerta.reputacion_osint,
         "explicacion_display": explanation,
         "recomendacion_display": recommendation,
+        "payload_malicioso": alerta.payload_malicioso,
+        "indicadores_malware": _parse_indicator_list(alerta.indicadores_malware),
+        "indicadores_malware_texto": alerta.indicadores_malware or "",
         "vt_malicious": alerta.vt_malicious,
         "abuse_confidence": alerta.abuse_confidence,
         "otx_pulse_count": alerta.otx_pulse_count,
-        # Nuevos campos de ML
         "ml_metrics": ml_metrics,
-        "osint_context": " · ".join(osint_context) if osint_context else "Sin datos OSINT",
+        "osint_context": osint_context_data["summary"],
+        "osint_context_data": osint_context_data,
         "explicacion_raw": alerta.explicacion,
+        "service_detected": osint_context_data["service_detected"],
+        "primary_domain": osint_context_data["primary_domain"],
+        "traffic_type": osint_context_data["traffic_type"],
+        "osint_reputation": osint_context_data["osint_reputation"],
+        "traffic_risk": osint_context_data["traffic_risk"],
+        "is_whitelisted": osint_context_data["is_whitelisted"],
+        "servicio_detectado": osint_context_data["service_detected"],
+        "dominio_principal": osint_context_data["primary_domain"],
+        "tipo_trafico": osint_context_data["traffic_type"],
+        "origen_resuelto": osint_context_data["source_label"] if can_view_sensitive else osint_context_data["source_name"],
+        "destino_resuelto": osint_context_data["destination_label"] if can_view_sensitive else osint_context_data["destination_name"],
+        "repeticiones": repeticiones,
+        "es_agrupada": repeticiones > 1,
     }
 
 
 def _build_dashboard_context(request, current_section="overview"):
-    from datetime import timedelta
-
     can_manage_assets = user_can_manage_assets(request.user)
     can_view_sensitive = user_can_view_sensitive_data(request.user)
+    enabled_monitored_ips = _get_enabled_monitored_ips()
+    endpoint_index = _build_endpoint_index()
 
-    alertas_recientes = Alerta.objects.all().order_by("-prioridad_ia", "-fecha")[:50]
+    # SOLUCIÓN: Obtener todas las alertas, SIN FILTRAR por prioridad_ia. 
+    base_queryset = _filter_alertas_for_enabled_targets(Alerta.objects.all())
 
+    # Traemos las alertas ordenadas por fecha más reciente
+    alertas_recientes = list(base_queryset.order_by("-fecha")[:300])
+
+    alertas_criticas = []
+    alertas_benignas_list = []
+    
+    for alerta in alertas_recientes:
+        osint_context_data = _build_osint_context(alerta, endpoint_index=endpoint_index)
+        if _is_benign_group_candidate(alerta, osint_context_data):
+            alertas_benignas_list.append(alerta)
+        else:
+            alertas_criticas.append(alerta)
+    
+    vistas_benignas = {}
+    for alerta in alertas_benignas_list:
+        osint_context_data = _build_osint_context(alerta, endpoint_index=endpoint_index)
+        clave = _build_benign_group_key(alerta, osint_context_data)
+
+        if clave not in vistas_benignas:
+            vistas_benignas[clave] = {"alerta": alerta, "contador": 1}
+        else:
+            vistas_benignas[clave]["contador"] += 1
+            fecha_actual = alerta.fecha or timezone.now()
+            fecha_guardada = vistas_benignas[clave]["alerta"].fecha or timezone.now()
+            if fecha_actual > fecha_guardada:
+                vistas_benignas[clave]["alerta"] = alerta
+    
+    # Ordenar críticas: por score IA (tratando None como 0) y fecha
+    alertas_criticas.sort(key=lambda x: (x.prioridad_ia or 0, x.fecha or timezone.now()), reverse=True)
+    alertas_deduplicadas = alertas_criticas[:50]
+    
+    # Ordenar benignas por fecha
+    benignas_agrupadas = sorted(vistas_benignas.values(), key=lambda x: x["alerta"].fecha or timezone.now(), reverse=True)
+    for item in benignas_agrupadas[:15]: 
+        item["alerta"]._repeticiones = item["contador"]
+        alertas_deduplicadas.append(item["alerta"])
+    
     alert_cards = [
-        _format_alert_for_dashboard(alerta, can_view_sensitive)
-        for alerta in alertas_recientes
+        _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=endpoint_index)
+        for alerta in alertas_deduplicadas
     ]
 
-    ips_con_alertas = set()
-    todas_alertas = Alerta.objects.all()[:1000]
-    for alerta in todas_alertas:
-        if alerta.ip_origen:
-            ips_con_alertas.add(alerta.ip_origen)
-        if alerta.ip_destino:
-            ips_con_alertas.add(alerta.ip_destino)
-
-    activos_con_alertas = (
-        Activo.objects.filter(ip__in=ips_con_alertas).order_by("-criticidad")
-        if ips_con_alertas else Activo.objects.none()
-    )
-
-    resumen = Alerta.objects.aggregate(
-        total_alertas=Count("id"),
-        promedio_prioridad=Avg("prioridad_ia"),
-    )
-
-    osint_status = settings.OSINT_PROVIDER_STATUS
-    osint_configured = sum(1 for provider in osint_status if provider["configured"])
-    ultima_alerta = alert_cards[0] if alert_cards else None
-    criticidad_activos_alta = activos_con_alertas.filter(criticidad__gte=4).count() if ips_con_alertas else 0
-
+    # Contadores reales
+    resumen = base_queryset.aggregate(total=Count("id"), promedio=Avg("prioridad_ia"))
+    
     return {
         "alertas_criticas_recientes": alert_cards,
-        "activos_con_alertas": activos_con_alertas,
-        "total_alertas": resumen["total_alertas"] or 0,
-        "promedio_prioridad": resumen["promedio_prioridad"] or 0,
+        "alertas_osint_recientes": alert_cards[:20],
+        "activos_con_alertas": Activo.objects.all().order_by("-criticidad"),
+        "total_alertas": resumen["total"] or 0,
+        "promedio_prioridad": resumen["promedio"] or 0,
         "role_label": get_role_label(request.user),
         "is_admin_user": is_admin_user(request.user),
-        "osint_status": osint_status,
-        "osint_configured_count": osint_configured,
+        "osint_status": settings.OSINT_PROVIDER_STATUS,
+        "osint_configured_count": sum(1 for p in settings.OSINT_PROVIDER_STATUS if p["configured"]),
         "can_manage_assets": can_manage_assets,
         "can_view_sensitive_data": can_view_sensitive,
-        "total_alertas_criticas": len(alert_cards),
-        "ultima_alerta_critica": ultima_alerta,
-        "criticidad_activos_alta": criticidad_activos_alta,
+        "total_alertas_criticas": base_queryset.filter(prioridad_ia__gte=70).count(),
+        "ultima_alerta_critica": alert_cards[0] if alert_cards else None,
+        "criticidad_activos_alta": Activo.objects.filter(criticidad__gte=4).count(),
         "current_section": current_section,
+        "enabled_monitored_ips": enabled_monitored_ips,
     }
 
 
@@ -449,6 +945,7 @@ def dashboard_alertas(request):
 @require_soc_access
 @never_cache
 def dashboard_activos(request):
+    _sync_enabled_monitored_endpoints_into_assets()
     return render(request, "monitoreo/activos.html", _build_dashboard_context(request, "activos"))
 
 
@@ -457,6 +954,135 @@ def dashboard_activos(request):
 @never_cache
 def dashboard_osint(request):
     return render(request, "monitoreo/osint.html", _build_dashboard_context(request, "osint"))
+
+
+@two_factor_required
+@require_soc_access
+@never_cache
+def dashboard_redes(request):
+    context = _build_dashboard_context(request, "redes")
+    context.update(
+        {
+            "monitored_endpoints": MonitoredEndpoint.objects.all(),
+        }
+    )
+    return render(request, "monitoreo/redes.html", context)
+
+
+@two_factor_required
+@require_admin_access
+@require_POST
+def agregar_endpoint_monitoreado(request):
+    nombre = (request.POST.get("nombre") or "").strip()
+    ip = (request.POST.get("ip") or "").strip()
+    descripcion = (request.POST.get("descripcion") or "").strip()
+
+    if not nombre or not ip:
+        messages.error(request, "Nombre e IP son obligatorios para registrar la maquina monitorizada.")
+        return redirect("dashboard_redes")
+
+    endpoint, created = MonitoredEndpoint.objects.update_or_create(
+        ip=ip,
+        defaults={
+            "nombre": nombre,
+            "descripcion": descripcion,
+        },
+    )
+    Activo.objects.filter(ip=ip).update(nombre=nombre)
+    log_security_event(
+        request,
+        "monitored_endpoint_upsert",
+        actor=request.user,
+        target_username=ip,
+        details=f"Objetivo monitorizado {'creado' if created else 'actualizado'}: {nombre}.",
+    )
+    messages.success(request, f"Objetivo monitorizado guardado para {nombre} ({ip}).")
+    return redirect("dashboard_redes")
+
+
+@two_factor_required
+@require_admin_access
+@require_POST
+def toggle_endpoint_monitoreado(request, endpoint_id):
+    try:
+        endpoint = MonitoredEndpoint.objects.get(pk=endpoint_id)
+    except MonitoredEndpoint.DoesNotExist:
+        messages.error(request, "El objetivo monitorizado no existe.")
+        return redirect("dashboard_redes")
+
+    endpoint.is_enabled = not endpoint.is_enabled
+    endpoint.save(update_fields=["is_enabled"])
+    estado = "habilitado" if endpoint.is_enabled else "deshabilitado"
+    log_security_event(
+        request,
+        "monitored_endpoint_toggled",
+        actor=request.user,
+        target_username=endpoint.ip,
+        details=f"Objetivo monitorizado {estado}: {endpoint.nombre}.",
+    )
+    messages.success(request, f"Filtro de red {estado} para {endpoint.nombre} ({endpoint.ip}).")
+    return redirect("dashboard_redes")
+
+
+@two_factor_required
+@require_admin_access
+@require_POST
+def verificar_endpoint_monitoreado(request, endpoint_id):
+    try:
+        endpoint = MonitoredEndpoint.objects.get(pk=endpoint_id)
+    except MonitoredEndpoint.DoesNotExist:
+        messages.error(request, "El objetivo monitorizado no existe.")
+        return redirect("dashboard_redes")
+
+    result = _run_ping_check(endpoint.ip)
+    endpoint.last_checked_at = timezone.now()
+    endpoint.last_is_reachable = result["reachable"]
+    endpoint.last_latency_ms = result["latency_ms"]
+    endpoint.last_message = result["message"]
+    endpoint.save(
+        update_fields=[
+            "last_checked_at",
+            "last_is_reachable",
+            "last_latency_ms",
+            "last_message",
+        ]
+    )
+    log_security_event(
+        request,
+        "monitored_endpoint_verified",
+        actor=request.user,
+        target_username=endpoint.ip,
+        details=f"Verificacion de conectividad para {endpoint.nombre}: {endpoint.last_message}",
+    )
+    if result["reachable"]:
+        messages.success(request, f"{endpoint.nombre} responde correctamente. {endpoint.last_message}")
+    else:
+        messages.error(request, f"{endpoint.nombre} no respondio. {endpoint.last_message}")
+    return redirect("dashboard_redes")
+
+
+@two_factor_required
+@require_admin_access
+@require_POST
+def eliminar_endpoint_monitoreado(request, endpoint_id):
+    try:
+        endpoint = MonitoredEndpoint.objects.get(pk=endpoint_id)
+    except MonitoredEndpoint.DoesNotExist:
+        messages.error(request, "El objetivo monitorizado no existe.")
+        return redirect("dashboard_redes")
+
+    nombre = endpoint.nombre
+    ip = str(endpoint.ip)
+    endpoint.delete()
+    log_security_event(
+        request,
+        "monitored_endpoint_deleted",
+        actor=request.user,
+        target_username=ip,
+        details=f"Objetivo monitorizado eliminado: {nombre}.",
+    )
+    messages.success(request, f"Objetivo monitorizado eliminado: {nombre} ({ip}).")
+    return redirect("dashboard_redes")
 
 @two_factor_required
 @require_asset_management
@@ -469,7 +1095,10 @@ def agregar_activo(request):
         ip=ip,
         defaults={'nombre': nombre, 'criticidad': criticidad}
     )
+    MonitoredEndpoint.objects.filter(ip=ip).update(nombre=nombre)
+    # Resetear prioridad de alertas asociadas a este IP para que el motor las vuelva a evaluar con la nueva criticidad
     Alerta.objects.filter(ip_destino=ip).update(prioridad_ia=None)
+    
     log_security_event(
         request,
         "asset_upsert",
@@ -477,21 +1106,25 @@ def agregar_activo(request):
         target_username=ip,
         details=f"Activo actualizado o creado: nombre={nombre}, criticidad={criticidad}.",
     )
-    return redirect('soc_dashboard')
+    # REDIRIGIR A LA PAGINA DE ACTIVOS PARA VER EL RESULTADO
+    return redirect('dashboard_activos')
 
 @two_factor_required
 @require_soc_access
 @never_cache
 @require_GET
 def check_notificaciones(request):
-    nueva_critica = Alerta.objects.filter(prioridad_ia__gte=80).order_by('-id').first()
-    if nueva_critica:
+    # CAMBIO: Quitamos el filtro de 80. Ahora cualquier alerta nueva (ID más alto)
+    # disparará la recarga de la página.
+    ultima_alerta = Alerta.objects.order_by('-id').first()
+    
+    if ultima_alerta:
         return JsonResponse({
-            'id': nueva_critica.id,
-            'firma': nueva_critica.firma,
-            'score': nueva_critica.prioridad_ia,
-            'ip_origen': nueva_critica.ip_origen,
-            'recomendacion': nueva_critica.recomendacion,
+            'id': ultima_alerta.id,
+            'firma': ultima_alerta.firma,
+            'score': ultima_alerta.prioridad_ia or 0,
+            'ip_origen': ultima_alerta.ip_origen,
+            'recomendacion': ultima_alerta.recomendacion,
         })
     return JsonResponse({'id': None})
 
@@ -915,3 +1548,109 @@ def logout_view(request):
         auth_logout(request)
         return redirect("login")
     return render(request, "registration/logout.html")
+
+
+@two_factor_required
+@require_soc_access
+@require_POST
+def limpiar_alertas(request):
+    """Borra todas las alertas de la base de datos"""
+    Alerta.objects.all().delete()
+    log_security_event(
+        request, 
+        "alerts_purged", 
+        actor=request.user, 
+        details="El usuario vació la tabla de alertas para una nueva prueba."
+    )
+    messages.success(request, "Se han borrado todas las alertas correctamente.")
+    return redirect('dashboard_alertas')
+
+@two_factor_required
+@require_admin_access  # Solo el administrador puede entrar aquí
+@require_POST
+def eliminar_activo(request, activo_id):
+    try:
+        activo = Activo.objects.get(id=activo_id)
+        nombre = activo.nombre
+        ip = activo.ip
+        activo.delete()
+        log_security_event(request, "asset_deleted", actor=request.user, details=f"Activo eliminado: {nombre} ({ip})")
+        messages.success(request, f"Activo {nombre} eliminado correctamente.")
+    except Activo.DoesNotExist:
+        messages.error(request, "El activo no existe.")
+    return redirect('dashboard_activos')
+
+@two_factor_required
+@require_admin_access
+@require_POST
+def editar_activo(request, activo_id):
+    try:
+        activo = Activo.objects.get(id=activo_id)
+        activo.nombre = request.POST.get('nombre')
+        activo.criticidad = request.POST.get('criticidad')
+        # La IP no se suele editar para mantener integridad, se borra y crea uno nuevo
+        activo.save()
+        MonitoredEndpoint.objects.filter(ip=activo.ip).update(nombre=activo.nombre)
+        log_security_event(request, "asset_updated", actor=request.user, details=f"Activo actualizado: {activo.nombre} (Crit: {activo.criticidad})")
+        messages.success(request, "Activo actualizado correctamente.")
+    except Activo.DoesNotExist:
+        messages.error(request, "Error al actualizar.")
+    return redirect('dashboard_activos')
+
+
+@two_factor_required
+@require_admin_access
+@never_cache
+def dashboard_suricata_config(request):
+    config, created = SuricataConfig.objects.get_or_create(
+        defaults={'interfaces': 'eth0', 'is_active': True}
+    )
+    
+    if request.method == "POST":
+        action = request.POST.get('action', 'save')
+        
+        if action == 'reset':
+            config.interfaces = 'eth0'
+            config.is_active = True
+            config.save()
+            log_security_event(
+                request,
+                "suricata_config_reset",
+                actor=request.user,
+                details="Configuración Suricata reseteada a valores por defecto",
+            )
+            messages.success(request, "Configuración reseteada a valores por defecto.")
+            return redirect('dashboard_suricata_config')
+        
+        interfaces = request.POST.get('interfaces', '').strip()
+        is_active = request.POST.get('is_active') == 'on'
+        
+        if not interfaces:
+            messages.error(request, "Debes especificar al menos una interfaz de red.")
+            return redirect('dashboard_suricata_config')
+        
+        config.interfaces = interfaces
+        config.is_active = is_active
+        config.save()
+        
+        # Aplicar la configuración
+        from django.core.management import call_command
+        try:
+            call_command('apply_suricata_config')
+            messages.success(request, "✅ Configuración de Suricata aplicada correctamente. Interfaces: " + interfaces)
+        except Exception as e:
+            messages.warning(request, f"⚠️ Configuración guardada en BD, pero error aplicando cambios: {str(e)[:100]}")
+        
+        log_security_event(
+            request,
+            "suricata_config_updated",
+            actor=request.user,
+            details=f"Configuración Suricata actualizada: interfaces={interfaces}, active={is_active}",
+        )
+        return redirect('dashboard_suricata_config')
+    
+    context = _build_dashboard_context(request, "suricata_config")
+    context.update({
+        'config': config,
+    })
+    return render(request, "monitoreo/suricata_config.html", context)

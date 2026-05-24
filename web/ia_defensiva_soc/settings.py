@@ -74,12 +74,7 @@ SECRET_KEY = _get_setting('DJANGO_SECRET_KEY', '')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _get_bool('DJANGO_DEBUG', True)
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in _get_setting('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
-    if host.strip()
-]
-
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -88,19 +83,19 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.messages',
+    'django.contrib.messages',  # <--- REVISA QUE SOLO ESTÉ ESTA LÍNEA
     'django.contrib.staticfiles',
-    'monitoreo', # <--- NUESTRA NUEVA APP
+    'monitoreo', 
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware', # 1. Primero sesiones
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware', # 2. Luego mensajes
     'monitoreo.middleware.StrictSessionMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 

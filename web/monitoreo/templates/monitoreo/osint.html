@@ -1,6 +1,65 @@
 {% extends "monitoreo/base_dashboard.html" %}
 {% block title %}Agente IA — OSINT{% endblock %}
 {% block dashboard_content %}
+<style>
+  .osint-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .osint-card,
+  .alert-osint-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 18px;
+  }
+
+  .osint-hd,
+  .alert-osint-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .osint-name {
+    font-weight: 600;
+  }
+
+  .st-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+  }
+
+  .st-ok { background: var(--low); }
+  .st-warn { background: var(--medium); }
+  .st-err { background: var(--critical); }
+
+  .alert-osint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .alert-osint-meta {
+    font-size: 12px;
+    color: var(--muted2);
+    margin: 6px 0;
+  }
+
+  .alert-osint-row {
+    font-size: 13px;
+    margin: 4px 0;
+  }
+</style>
+
 <div class="page-header">
   <div>
     <div class="page-title">Estado de integraciones OSINT</div>
@@ -42,6 +101,41 @@
       Estado inactivo. Completa la API key para aumentar la calidad del enriquecimiento.
       {% endif %}
     </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Contexto OSINT de alertas recientes</div>
+    <div class="page-sub">Resumen extraído desde las alertas enriquecidas por el agente y las fuentes OSINT.</div>
+  </div>
+</div>
+
+<div class="alert-osint-list">
+  {% for alerta in alertas_osint_recientes %}
+  <div class="alert-osint-card">
+    <div class="alert-osint-head">
+      <strong>{{ alerta.service_detected|default:"Servicio desconocido" }}</strong>
+      <span class="badge {% if alerta.is_whitelisted %}bl{% elif alerta.prioridad_ia >= 80 %}bc{% elif alerta.prioridad_ia >= 55 %}bh{% else %}bm{% endif %}">
+        {% if alerta.is_whitelisted %}
+        Lista blanca
+        {% else %}
+        {{ alerta.traffic_risk }}
+        {% endif %}
+      </span>
+    </div>
+    <div class="alert-osint-row">Dominio principal: {{ alerta.primary_domain|default:"No identificado" }}</div>
+    <div class="alert-osint-row">Origen resuelto: {{ alerta.source_label|default:"No identificado" }}</div>
+    <div class="alert-osint-row">Destino resuelto: {{ alerta.destination_label|default:"No identificado" }}</div>
+    <div class="alert-osint-row">Tipo de tráfico: {{ alerta.traffic_type|default:"No clasificado" }}</div>
+    <div class="alert-osint-row">Reputación OSINT: {{ alerta.osint_reputation|default:"Sin información" }}</div>
+    <div class="alert-osint-row">VT: {{ alerta.vt_malicious|default:"0" }} maliciosos, {{ alerta.abuse_confidence|default:"0" }}% AbuseIPDB, {{ alerta.otx_pulse_count|default:"0" }} pulsos OTX</div>
+    <div class="alert-osint-meta">{{ alerta.fecha_display }} {{ alerta.hora_display }}</div>
+  </div>
+  {% empty %}
+  <div class="alert-osint-card">
+    No hay alertas recientes con contexto OSINT para mostrar.
   </div>
   {% endfor %}
 </div>

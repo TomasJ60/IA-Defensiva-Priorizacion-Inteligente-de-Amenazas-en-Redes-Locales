@@ -1,0 +1,292 @@
+{% extends "monitoreo/base_dashboard.html" %}
+{% block title %}Agente IA — Configuración Suricata{% endblock %}
+{% block dashboard_content %}
+<style>
+  .config-form {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .form-group {
+    margin-bottom: 24px;
+  }
+
+  .form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg2);
+    color: var(--text);
+    font-family: var(--mono);
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .form-help {
+    font-size: 12px;
+    color: var(--muted2);
+    margin-top: 4px;
+  }
+
+  .switch-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .switch {
+    position: relative;
+    width: 48px;
+    height: 24px;
+    background: var(--border2);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .switch input {
+    display: none;
+  }
+
+  .switch input:checked + .slider {
+    background: var(--low);
+  }
+
+  .slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: var(--bg2);
+    border-radius: 50%;
+    transition: left 0.3s;
+  }
+
+  .switch input:checked + .slider {
+    left: 24px;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn-submit {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--r);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .btn-submit:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  .btn-delete {
+    background: var(--critical);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--r);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .btn-delete:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  .status-box {
+    margin-top: 30px;
+    padding: 20px;
+    background: var(--bg3);
+    border-radius: var(--r);
+    border-left: 4px solid var(--border2);
+  }
+
+  .status-box.active {
+    border-left-color: var(--low);
+    background: rgba(61, 184, 130, 0.1);
+  }
+
+  .status-box.inactive {
+    border-left-color: var(--high);
+    background: rgba(232, 119, 48, 0.1);
+  }
+
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 8px 0;
+    font-size: 14px;
+  }
+
+  .status-label {
+    color: var(--muted2);
+  }
+
+  .status-value {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: var(--r2);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .status-indicator.on {
+    background: rgba(61, 184, 130, 0.2);
+    color: var(--low);
+  }
+
+  .status-indicator.off {
+    background: rgba(232, 119, 48, 0.2);
+    color: var(--high);
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .dot.on {
+    background: var(--low);
+    box-shadow: 0 0 6px var(--low);
+  }
+
+  .dot.off {
+    background: var(--high);
+  }
+
+  .loading {
+    display: none;
+    font-size: 12px;
+    color: var(--accent);
+    margin-top: 10px;
+  }
+
+  .loading.show {
+    display: block;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+</style>
+
+<div class="config-form">
+  <h2>Configuración de Suricata</h2>
+  <p class="form-help">Configura las interfaces de red que Suricata debe monitorear. Las interfaces deben estar separadas por comas.</p>
+
+  <form method="post" id="config-form">
+    {% csrf_token %}
+    
+    <div class="form-group">
+      <label class="form-label" for="interfaces">Interfaces de Red</label>
+      <input type="text" id="interfaces" name="interfaces" class="form-input" 
+             value="{{ config.interfaces }}" placeholder="enp0s8,eth0,wlan0" required>
+      <div class="form-help">Ejemplos: enp0s8 (interfaz secundaria), eth0 (cableada), wlan0 (wifi)</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Estado de Suricata</label>
+      <div class="switch-container">
+        <label class="switch">
+          <input type="checkbox" id="is_active" name="is_active" value="on" {% if config.is_active %}checked{% endif %}>
+          <span class="slider"></span>
+        </label>
+        <span id="status-text">{% if config.is_active %}ACTIVO{% else %}INACTIVO{% endif %}</span>
+      </div>
+      <div class="form-help">Activa o desactiva el monitoreo de Suricata</div>
+    </div>
+
+    <div class="form-group">
+      <div class="btn-group">
+        <button type="submit" class="btn-submit" id="save-btn">💾 Guardar Configuración</button>
+        <button type="button" class="btn-delete" id="reset-btn">🗑️ Borrar Configuración</button>
+      </div>
+      <div class="loading" id="loading">⏳ Aplicando configuración...</div>
+    </div>
+  </form>
+
+  <div class="status-box {% if config.is_active %}active{% else %}inactive{% endif %}" id="status-box">
+    <h3 style="margin-top: 0;">📊 Estado Actual</h3>
+    
+    <div class="status-row">
+      <span class="status-label">Interfaces:</span>
+      <span class="status-value">{{ config.interfaces }}</span>
+    </div>
+
+    <div class="status-row">
+      <span class="status-label">Estado:</span>
+      <span class="status-indicator {% if config.is_active %}on{% else %}off{% endif %}" id="state-indicator">
+        <span class="dot {% if config.is_active %}on{% else %}off{% endif %}"></span>
+        {% if config.is_active %}ACTIVO{% else %}INACTIVO{% endif %}
+      </span>
+    </div>
+
+    <div class="status-row">
+      <span class="status-label">Última actualización:</span>
+      <span class="status-value">{{ config.updated_at|date:"d/m/Y H:i" }}</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('reset-btn').addEventListener('click', function() {
+    if (confirm('¿Estás seguro de que quieres borrar toda la configuración?')) {
+      const form = document.getElementById('config-form');
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'action';
+      input.value = 'reset';
+      form.appendChild(input);
+      form.submit();
+    }
+  });
+
+  document.getElementById('is_active').addEventListener('change', function() {
+    document.getElementById('status-text').textContent = this.checked ? 'ACTIVO' : 'INACTIVO';
+  });
+
+  document.getElementById('config-form').addEventListener('submit', function() {
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('save-btn').disabled = true;
+  });
+</script>
+{% endblock %}

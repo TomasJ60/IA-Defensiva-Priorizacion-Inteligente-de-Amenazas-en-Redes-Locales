@@ -194,6 +194,10 @@ nav{
     <a class="nav-tab {% if current_section == 'alertas' %}active{% endif %}" href="{% url 'dashboard_alertas' %}">Alertas</a>
     <a class="nav-tab {% if current_section == 'activos' %}active{% endif %}" href="{% url 'dashboard_activos' %}">Activos</a>
     <a class="nav-tab {% if current_section == 'osint' %}active{% endif %}" href="{% url 'dashboard_osint' %}">OSINT</a>
+    <a class="nav-tab {% if current_section == 'redes' %}active{% endif %}" href="{% url 'dashboard_redes' %}">Redes</a>
+    {% if is_admin_user %}
+    <a class="nav-tab {% if current_section == 'suricata_config' %}active{% endif %}" href="{% url 'dashboard_suricata_config' %}">Suricata</a>
+    {% endif %}
   </div>
 
   <div class="nav-right">
@@ -250,6 +254,15 @@ nav{
 </div>
 
 <div class="content">
+{% if messages %}
+  <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+    {% for message in messages %}
+    <div style="padding:10px 12px; border-radius:var(--r2); border:1px solid var(--border2); background:{% if message.tags == 'success' %}rgba(61,184,130,.12){% elif message.tags == 'error' %}rgba(232,65,74,.12){% else %}var(--bg3){% endif %}; color:{% if message.tags == 'success' %}var(--low){% elif message.tags == 'error' %}var(--critical){% else %}var(--text){% endif %};">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
 {% block dashboard_content %}{% endblock %}
 </div>
 

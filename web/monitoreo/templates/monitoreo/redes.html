@@ -1,0 +1,156 @@
+{% extends "monitoreo/base_dashboard.html" %}
+{% block title %}Agente IA — Redes{% endblock %}
+{% block dashboard_content %}
+<style>
+  .network-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+
+  .network-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 18px;
+  }
+
+  .network-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .network-name {
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .network-ip {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted2);
+    margin-top: 4px;
+  }
+
+  .network-meta {
+    font-size: 12px;
+    color: var(--muted2);
+    margin: 6px 0;
+  }
+
+  .network-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+
+  .network-actions form {
+    margin: 0;
+  }
+
+  .btn-action {
+    border: none;
+    cursor: pointer;
+  }
+</style>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Redes monitorizadas</div>
+    <div class="page-sub">Configura qué máquinas virtuales o nodos quedan habilitados para filtrar el tráfico visible del dashboard y verifica conectividad real con ping.</div>
+  </div>
+</div>
+
+{% if is_admin_user %}
+<div class="card" style="margin-bottom:18px">
+  <div class="card-title">Registrar máquina o red objetivo</div>
+  <form action="{% url 'agregar_endpoint_monitoreado' %}" method="post" class="form-inline" style="grid-template-columns:repeat(3,1fr) auto">
+    {% csrf_token %}
+    <input type="text" name="nombre" placeholder="Nombre de la máquina" required>
+    <input type="text" name="ip" placeholder="IP de la VM o nodo" required>
+    <input type="text" name="descripcion" placeholder="Descripción opcional">
+    <button type="submit" class="nav-tab active" style="justify-content:center; cursor:pointer;">Guardar objetivo</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-title">Filtro activo</div>
+  {% if enabled_monitored_ips %}
+  <div class="fact-val">El dashboard está mostrando tráfico únicamente asociado a: {{ enabled_monitored_ips|join:", " }}</div>
+  {% else %}
+  <div class="fact-val">No hay objetivos habilitados. En este estado se muestra el tráfico completo disponible para el SOC.</div>
+  {% endif %}
+</div>
+
+<div class="network-grid">
+  {% for endpoint in monitored_endpoints %}
+  <div class="network-card">
+    <div class="network-head">
+      <div>
+        <div class="network-name">{{ endpoint.nombre }}</div>
+        <div class="network-ip">{{ endpoint.ip }}</div>
+      </div>
+      <span class="badge {% if endpoint.is_enabled %}bl{% else %}bc{% endif %}">
+        {% if endpoint.is_enabled %}Encendido{% else %}Apagado{% endif %}
+      </span>
+    </div>
+
+    {% if endpoint.descripcion %}
+    <div class="network-meta">{{ endpoint.descripcion }}</div>
+    {% endif %}
+
+    <div class="network-meta">
+      Última verificación:
+      {% if endpoint.last_checked_at %}
+      {{ endpoint.last_checked_at }}
+      {% else %}
+      Sin verificar todavía
+      {% endif %}
+    </div>
+
+    <div class="network-meta">
+      Estado:
+      {% if endpoint.last_is_reachable is True %}
+      Alcanzable{% if endpoint.last_latency_ms %} · {{ endpoint.last_latency_ms|floatformat:2 }} ms{% endif %}
+      {% elif endpoint.last_is_reachable is False %}
+      Sin respuesta
+      {% else %}
+      Sin datos
+      {% endif %}
+    </div>
+
+    {% if endpoint.last_message %}
+    <div class="network-meta">{{ endpoint.last_message }}</div>
+    {% endif %}
+
+    <div class="network-actions">
+      {% if is_admin_user %}
+      <form action="{% url 'toggle_endpoint_monitoreado' endpoint.id %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="badge btn-action {% if endpoint.is_enabled %}bc{% else %}bl{% endif %}">
+          {% if endpoint.is_enabled %}Apagar filtro{% else %}Encender filtro{% endif %}
+        </button>
+      </form>
+
+      <form action="{% url 'verificar_endpoint_monitoreado' endpoint.id %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="badge btn-action bi">Verificar ping</button>
+      </form>
+
+      <form action="{% url 'eliminar_endpoint_monitoreado' endpoint.id %}" method="post" onsubmit="return confirm('¿Eliminar este objetivo monitorizado?');">
+        {% csrf_token %}
+        <button type="submit" class="badge btn-action bc">Eliminar</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="card empty">Todavía no has registrado máquinas monitorizadas.</div>
+  {% endfor %}
+</div>
+{% endblock %}

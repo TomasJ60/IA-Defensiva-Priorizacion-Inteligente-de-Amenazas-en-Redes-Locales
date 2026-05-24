@@ -1,0 +1,6 @@
+alert icmp 192.168.100.2 any -> any any (msg:"SOC HEURISTICA - ICMP Echo desde Debian monitorizado"; itype:8; sid:1001001; rev:1; classtype:attempted-recon;)
+alert tcp 192.168.100.2 any -> any any (msg:"SOC HEURISTICA - TCP SYN desde Debian monitorizado"; flags:S; threshold:type threshold, track by_src, count 3, seconds 5; sid:1001002; rev:1; classtype:network-scan;)
+alert tcp 192.168.100.2 any -> any any (msg:"SOC HEURISTICA - TCP FIN desde Debian monitorizado"; flags:F; threshold:type threshold, track by_src, count 3, seconds 5; sid:1001003; rev:1; classtype:network-scan;)
+alert tcp 192.168.100.2 any -> any any (msg:"SOC HEURISTICA - TCP Xmas desde Debian monitorizado"; flags:FPU; threshold:type threshold, track by_src, count 3, seconds 5; sid:1001004; rev:1; classtype:network-scan;)
+alert tcp 192.168.100.2 any -> any any (msg:"SOC HEURISTICA - TCP Null scan desde Debian monitorizado"; flags:0; threshold:type threshold, track by_src, count 3, seconds 5; sid:1001005; rev:1; classtype:network-scan;)
+alert udp 192.168.100.2 any -> any any (msg:"SOC HEURISTICA - UDP probe desde Debian monitorizado"; threshold:type threshold, track by_src, count 5, seconds 5; sid:1001006; rev:1; classtype:attempted-recon;)

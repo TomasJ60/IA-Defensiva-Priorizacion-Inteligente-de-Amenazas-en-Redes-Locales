@@ -2,6 +2,39 @@
 {% load role_tags %}
 {% block title %}Agente IA — Activos{% endblock %}
 {% block dashboard_content %}
+
+<style>
+  /* Estilos para los botones de acción */
+  .asset-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .btn-edit { background: rgba(74, 143, 255, 0.1); color: var(--accent); border: 1px solid rgba(74, 143, 255, 0.2); cursor: pointer; }
+  .btn-delete { background: rgba(232, 65, 74, 0.1); color: var(--critical); border: 1px solid rgba(232, 65, 74, 0.2); cursor: pointer; }
+  .btn-edit:hover { background: var(--accent); color: white; }
+  .btn-delete:hover { background: var(--critical); color: white; }
+  
+  .edit-form-container {
+    margin-top: 10px;
+    background: var(--bg4);
+    padding: 12px;
+    border-radius: var(--r2);
+    display: none; /* Oculto por defecto */
+  }
+  .edit-form-container input {
+    width: 100%;
+    margin-bottom: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: white;
+    padding: 5px;
+    border-radius: 4px;
+  }
+</style>
+
 <div class="page-header">
   <div>
     <div class="page-title">Activos relacionados</div>
@@ -9,6 +42,7 @@
   </div>
 </div>
 
+{# FORMULARIO SUPERIOR: Visible para Admin y Analista #}
 {% if can_manage_assets %}
 <div class="card" style="margin-bottom:18px">
   <div class="card-title">Registrar o actualizar activo</div>
@@ -17,7 +51,7 @@
     <input type="text" name="ip" placeholder="IP del activo" required>
     <input type="text" name="nombre" placeholder="Nombre del activo" required>
     <input type="number" name="criticidad" min="1" max="5" placeholder="Criticidad 1-5" required>
-    <button type="submit" class="nav-tab active" style="justify-content:center">Guardar</button>
+    <button type="submit" class="nav-tab active" style="justify-content:center; cursor:pointer;">Guardar Activo</button>
   </form>
 </div>
 {% endif %}
@@ -35,15 +69,62 @@
         {{ activo.criticidad }}
       </div>
     </div>
+    
     <div class="asset-meta">
-      <span>Rol: {{ role_label }}</span>
-      <span>{% if activo.criticidad >= 4 %}Atencion alta{% else %}Seguimiento normal{% endif %}</span>
+      <span>Estado: Operativo</span>
+      <span>{% if activo.criticidad >= 4 %}Atención Prioritaria{% else %}Monitoreo Estándar{% endif %}</span>
     </div>
+
     <div class="crit-row"><span>Criticidad del activo</span><span>{{ activo.criticidad }}/5</span></div>
-    <div class="crit-trk"><div class="crit-fill" style="width:{% widthratio activo.criticidad 5 100 %}%;background:{% if activo.criticidad >= 5 %}var(--critical){% elif activo.criticidad >= 4 %}var(--high){% elif activo.criticidad >= 3 %}var(--medium){% else %}var(--low){% endif %}"></div></div>
+    <div class="crit-trk">
+        <div class="crit-fill" style="width:{% widthratio activo.criticidad 5 100 %}%;background:{% if activo.criticidad >= 5 %}var(--critical){% elif activo.criticidad >= 4 %}var(--high){% elif activo.criticidad >= 3 %}var(--medium){% else %}var(--low){% endif %}"></div>
+    </div>
+
+    {# BOTONES DE ACCIÓN: SOLO VISIBLES PARA EL ADMINISTRADOR #}
+    {% if is_admin_user %}
+    <div class="asset-actions">
+        <!-- Botón para mostrar formulario de edición -->
+        <button type="button" class="badge btn-edit" onclick="toggleEdit('{{ activo.id }}')">
+            <i class="bi bi-pencil"></i> Editar
+        </button>
+
+        <!-- Botón para eliminar (dentro de un form para seguridad) -->
+        <form action="{% url 'eliminar_activo' activo.id %}" method="post" onsubmit="return confirm('¿Estás seguro de eliminar este activo?');" style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="badge btn-delete">
+                <i class="bi bi-trash"></i> Eliminar
+            </button>
+        </form>
+    </div>
+
+    <!-- Formulario de Edición Rápida (Se activa con el botón Editar) -->
+    <div id="edit-container-{{ activo.id }}" class="edit-form-container">
+        <form action="{% url 'editar_activo' activo.id %}" method="post">
+            {% csrf_token %}
+            <label style="font-size: 10px; color: var(--muted2);">NOMBRE:</label>
+            <input type="text" name="nombre" value="{{ activo.nombre }}" required>
+            <label style="font-size: 10px; color: var(--muted2);">CRITICIDAD (1-5):</label>
+            <input type="number" name="criticidad" value="{{ activo.criticidad }}" min="1" max="5" required>
+            <button type="submit" class="badge bl" style="width: 100%; border: none; cursor: pointer;">Actualizar</button>
+        </form>
+    </div>
+    {% endif %}
+
   </div>
   {% empty %}
-  <div class="card empty">No hay activos relacionados con las alertas visibles en este momento.</div>
+  <div class="card empty">No hay activos registrados en el inventario.</div>
   {% endfor %}
 </div>
+
+<script>
+  function toggleEdit(id) {
+    const container = document.getElementById('edit-container-' + id);
+    if (container.style.display === 'none' || container.style.display === '') {
+      container.style.display = 'block';
+    } else {
+      container.style.display = 'none';
+    }
+  }
+</script>
+
 {% endblock %}
