@@ -39,6 +39,14 @@ cd src
 python agente.py
 ```
 
+En otra terminal puedes ejecutar el motor de IA el cual toma las deciones y asigna la puntuacion final sobre la IP:
+
+```bash
+source .venv/bin/activate
+cd src
+python ia_motor.py
+```
+
 ## Instalacion mediante paquete Debian
 
 Este paquete esta pensado para distribuciones basadas en Debian o Ubuntu.
