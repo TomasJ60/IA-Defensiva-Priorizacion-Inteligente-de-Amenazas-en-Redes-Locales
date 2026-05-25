@@ -1,0 +1,18 @@
+[Unit]
+Description=Agente IA Defensiva Suricata Listener
+After=network.target suricata.service postgresql.service
+Requires=postgresql.service
+Wants=suricata.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/agente-ia-defensiva/src
+Environment=PATH=/opt/agente-ia-defensiva/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/agente-ia-defensiva/.venv/bin/python /opt/agente-ia-defensiva/src/agente.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

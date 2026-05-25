@@ -186,19 +186,20 @@ def registrar_alerta_sintetica(cursor, data, detection, target_osint, now_ts):
     )
 
     firma = f"{detection['signature']} [{proto}:{dest_port}] x{state['count']}"
-    cursor.execute("""
-        INSERT INTO alertas (
-            fecha, ip_origen, ip_destino, firma, severidad, reputacion_osint,
-            osint_score, tipo_trafico, payload_malicioso, indicadores_malware, vt_malicious
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING id
-    """, (
-        data.get("timestamp"), src, dst, firma, detection["severity"], int(osint_score),
-        osint_score, proto, detection["payload_malicioso"], ",".join(detection["indicadores"]),
-        osint.get("vt_malicious", 0),
-    ))
-    return ("alert", cursor.fetchone()[0], cache_key)
+    alerta_id = guardar_alerta(
+        cursor,
+        data,
+        src,
+        dst,
+        firma,
+        detection["severity"],
+        osint_score,
+        proto,
+        detection["payload_malicioso"],
+        detection["indicadores"],
+        osint,
+    )
+    return ("alert", alerta_id, cache_key)
 
 def analizar_payload_malicioso(data):
     indicadores = []
@@ -222,6 +223,44 @@ def calcular_score_amenaza_aumentado(osint_data, indicadores_payload, base_sever
     score_final = base_score + puntos_malware + (base_severidad * 5)
     if len(indicadores_payload) > 0: score_final *= 1.4
     return min(round(score_final, 1), 100.0)
+
+
+def guardar_alerta(cursor, data, src, dst, firma_evento, severidad, osint_score, tipo_trafico, payload_malicioso, indicadores, osint):
+    cursor.execute("""
+        INSERT INTO alertas (
+            fecha, ip_origen, ip_destino, firma, severidad, reputacion_osint,
+            vt_malicious, vt_suspicious, vt_reputation,
+            abuse_confidence, abuse_reports,
+            gn_noise, gn_riot, gn_classification,
+            otx_pulse_count, otx_tags, otx_malware_families,
+            osint_score, tipo_trafico, payload_malicioso, indicadores_malware
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
+    """, (
+        data.get("timestamp"),
+        src,
+        dst,
+        firma_evento,
+        int(severidad),
+        int(osint_score),
+        osint.get("vt_malicious", 0),
+        osint.get("vt_suspicious", 0),
+        osint.get("vt_reputation", 0),
+        osint.get("abuse_confidence", 0),
+        osint.get("abuse_reports", 0),
+        osint.get("gn_noise", False),
+        osint.get("gn_riot", False),
+        osint.get("gn_classification", "unknown"),
+        osint.get("otx_pulse_count", 0),
+        osint.get("otx_tags", ""),
+        osint.get("otx_malware_families", ""),
+        osint_score,
+        tipo_trafico,
+        payload_malicioso,
+        ",".join(indicadores),
+    ))
+    return cursor.fetchone()[0]
 
 
 def _ip_is_monitored(ip):
@@ -319,15 +358,19 @@ def procesar():
 
                 tipo_trafico = normalizar_tipo_trafico(data)
 
-                cursor.execute("""
-                    INSERT INTO alertas (fecha, ip_origen, ip_destino, firma, severidad, reputacion_osint, 
-                    osint_score, tipo_trafico, payload_malicioso, indicadores_malware, vt_malicious)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                """, (data.get("timestamp"), src, dst, firma_evento,
-                      int(data.get("alert", {}).get("severity", 3)), int(osint_score), osint_score, 
-                      tipo_trafico, es_malicioso, ",".join(indicadores), osint.get("vt_malicious", 0)))
-                
-                al_id = cursor.fetchone()[0]
+                al_id = guardar_alerta(
+                    cursor,
+                    data,
+                    src,
+                    dst,
+                    firma_evento,
+                    int(data.get("alert", {}).get("severity", 3)),
+                    osint_score,
+                    tipo_trafico,
+                    es_malicioso,
+                    indicadores,
+                    osint,
+                )
                 cursor.execute("NOTIFY alertas_nuevas, %s", (str(al_id),))
                 conn.commit()
                 print(f"   ✅ GUARDADO ID {al_id}")

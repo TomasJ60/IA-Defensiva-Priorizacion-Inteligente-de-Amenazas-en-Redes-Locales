@@ -2,9 +2,9 @@
 set -e
 
 if command -v systemctl >/dev/null 2>&1; then
-  systemctl stop agente-ia-web >/dev/null 2>&1 || true
-  systemctl stop agente-ia-agent >/dev/null 2>&1 || true
-  systemctl stop agente-ia-ia >/dev/null 2>&1 || true
+  systemctl stop agente-ia-defensiva-web >/dev/null 2>&1 || true
+  systemctl stop agente-ia-defensiva-agent >/dev/null 2>&1 || true
+  systemctl stop agente-ia-defensiva-ia >/dev/null 2>&1 || true
 fi
 
 exit 0

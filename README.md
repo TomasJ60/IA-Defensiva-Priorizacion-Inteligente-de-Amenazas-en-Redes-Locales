@@ -4,7 +4,7 @@ Sistema de monitoreo defensivo para redes locales con captura de eventos, priori
 
 Esta version del repositorio contiene solo el codigo y los archivos que forman parte del flujo funcional del proyecto. Tambien incluye el paquete Debian generado para despliegue rapido:
 
-- `agente-ia_1.0.0_all.deb`
+- `agente-ia-defensiva_1.0.0_all.deb`
 
 ## Componentes incluidos
 
@@ -21,7 +21,7 @@ Esta version del repositorio contiene solo el codigo y los archivos que forman p
 - `src/`: agente, motor IA y utilidades operativas.
 - `suricata/`: reglas locales.
 - `debian/`: definicion del paquete `.deb`.
-- `agente-ia_1.0.0_all.deb`: paquete listo para instalar en Debian/Ubuntu.
+- `agente-ia-defensiva_1.0.0_all.deb`: paquete listo para instalar en Debian/Ubuntu.
 
 ## Ejecucion local
 
@@ -44,15 +44,15 @@ python agente.py
 Este paquete esta pensado para distribuciones basadas en Debian o Ubuntu.
 
 ```bash
-sudo dpkg -i agente-ia_1.0.0_all.deb
+sudo dpkg -i agente-ia-defensiva_1.0.0_all.deb
 sudo apt-get install -f
 ```
 
 Servicios instalados:
 
-- `agente-ia-web`
-- `agente-ia-agent`
-- `agente-ia-ia`
+- `agente-ia-defensiva-web`
+- `agente-ia-defensiva-agent`
+- `agente-ia-defensiva-ia`
 
 ## Configuracion
 

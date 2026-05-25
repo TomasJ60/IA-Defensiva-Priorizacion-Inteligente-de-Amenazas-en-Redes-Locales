@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_NAME="agente-ia"
+PROJECT_NAME="agente-ia-defensiva"
 WORK_DIR="$(mktemp -d)"
 DEST_DIR="$HOME/$PROJECT_NAME"
 ARCHIVE=""
@@ -25,7 +25,7 @@ Opciones:
 
 Ejemplos:
   sudo ./bootstrap.sh --archive agente-ia-release.tar.gz
-  sudo ./bootstrap.sh --url https://example.com/agente-ia-release.tar.gz --dest /opt/agente-ia
+  sudo ./bootstrap.sh --url https://example.com/agente-ia-release.tar.gz --dest /opt/agente-ia-defensiva
 EOF
 }
 
@@ -138,7 +138,7 @@ fi
 rm -rf "$WORK_DIR"
 
 echo "\nBootstrap completo. Si el servicio systemd se instaló correctamente, el dashboard estará disponible en http://127.0.0.1:8000"
-if command_exists systemctl && systemctl is-active --quiet agente-ia; then
-  echo "Servicio 'agente-ia' activo. Usa: sudo systemctl status agente-ia"
+if command_exists systemctl && systemctl is-active --quiet agente-ia-defensiva; then
+  echo "Servicio 'agente-ia-defensiva' activo. Usa: sudo systemctl status agente-ia-defensiva"
 fi
 exit 0

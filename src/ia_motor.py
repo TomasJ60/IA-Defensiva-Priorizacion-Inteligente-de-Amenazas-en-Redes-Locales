@@ -26,6 +26,9 @@ warnings.filterwarnings("ignore")
 load_dotenv(dotenv_path=PROJECT_DIR / ".env")
 
 IA_CRITICAL_THRESHOLD = float(os.getenv("IA_CRITICAL_THRESHOLD", "85.0"))
+WEAK_BEHAVIORAL_INDICATORS = {
+    "user-agent sospechoso (bot/script)",
+}
 
 THREAT_PATTERNS = {
     "malware": ["ransomware", "trojan", "worm", "backdoor", "malware", "shellcode", "payload"],
@@ -56,7 +59,50 @@ except Exception as e:
 # LÓGICA DE PRIORIZACIÓN
 # ============================================================
 
-def predecir_prioridad(severidad, osint_score, criticidad_activo, payload_malicioso, indicadores_malware):
+def _normalizar_indicadores(indicadores_malware):
+    if not indicadores_malware:
+        return []
+    return [item.strip() for item in str(indicadores_malware).split(",") if item.strip()]
+
+
+def _clasificar_indicadores(indicadores):
+    weak = []
+    strong = []
+    for indicador in indicadores:
+        if indicador.lower() in WEAK_BEHAVIORAL_INDICATORS:
+            weak.append(indicador)
+        else:
+            strong.append(indicador)
+    return weak, strong
+
+
+def _destino_confiable(osint_score, vt_malicious, vt_suspicious, abuse_confidence, otx_pulse_count, gn_riot, gn_classification):
+    return (
+        float(osint_score) <= 25.0
+        and int(vt_malicious or 0) == 0
+        and int(vt_suspicious or 0) == 0
+        and int(abuse_confidence or 0) == 0
+        and int(otx_pulse_count or 0) == 0
+        and (
+            bool(gn_riot)
+            or str(gn_classification or "").strip().lower() in {"", "unknown", "benign"}
+        )
+    )
+
+
+def predecir_prioridad(
+    severidad,
+    osint_score,
+    criticidad_activo,
+    payload_malicioso,
+    indicadores_malware,
+    vt_malicious=0,
+    vt_suspicious=0,
+    abuse_confidence=0,
+    otx_pulse_count=0,
+    gn_riot=False,
+    gn_classification="unknown",
+):
     """
     Calcula la prioridad final combinando ML y lógica de seguridad ejecutiva.
     """
@@ -73,19 +119,38 @@ def predecir_prioridad(severidad, osint_score, criticidad_activo, payload_malici
         
         # 3. LÓGICA DE ESCALADA PARA LA SUSTENTACIÓN
         # Si detectamos malware en payload o la reputación OSINT es crítica (>80)
-        indicadores = []
-        if indicadores_malware:
-            indicadores = [item.strip() for item in str(indicadores_malware).split(",") if item.strip()]
+        indicadores = _normalizar_indicadores(indicadores_malware)
+        weak_indicators, strong_indicators = _clasificar_indicadores(indicadores)
+        only_weak_behavior = bool(weak_indicators) and not strong_indicators
+        payload_confirmado = bool(payload_malicioso) and not only_weak_behavior
+        destino_confiable = _destino_confiable(
+            osint_score,
+            vt_malicious,
+            vt_suspicious,
+            abuse_confidence,
+            otx_pulse_count,
+            gn_riot,
+            gn_classification,
+        )
 
-        if payload_malicioso or osint_score > 80:
+        if payload_confirmado or osint_score > 80:
             # Garantizar rango crítico: 85% a 100%
             score_final = 85.0 + (prob_malicia * 15.0)
-            if payload_malicioso:
+            if payload_confirmado:
                 razon_critica = "malware detectado por payload/indicadores"
             else:
                 razon_critica = f"OSINT crítico ({float(osint_score):.1f})"
             print(f"   🔥 ESCALADA CRÍTICA: {razon_critica}.")
-        
+
+        elif only_weak_behavior and destino_confiable:
+            # Automatizacion observada sobre un destino sin senales de reputacion negativa:
+            # mantenerlo visible, pero no llevarlo a zona critica.
+            score_final = 20.0 + (prob_malicia * 20.0)
+
+        elif only_weak_behavior:
+            # Señal debil que merece revision, pero necesita contexto adicional para escalar.
+            score_final = 45.0 + (prob_malicia * 20.0)
+
         elif osint_score > 40 or severidad <= 2:
             # Rango de precaución: 60% a 84%
             score_final = 60.0 + (prob_malicia * 24.0)
@@ -99,11 +164,14 @@ def predecir_prioridad(severidad, osint_score, criticidad_activo, payload_malici
         return score_final, {
             "prob_malicia": round(prob_malicia * 100.0, 1),
             "indicadores": indicadores,
-            "payload_malicioso": bool(payload_malicioso),
+            "payload_malicioso": payload_confirmado,
             "criticidad_activo": int(criticidad_activo),
             "osint_score": float(osint_score),
             "severidad": int(severidad),
-            "escalada_por_osint": bool((not payload_malicioso) and float(osint_score) > 80),
+            "escalada_por_osint": bool((not payload_confirmado) and float(osint_score) > 80),
+            "destino_confiable": destino_confiable,
+            "indicadores_debiles": weak_indicators,
+            "indicadores_fuertes": strong_indicators,
         }
 
     except Exception as e:
@@ -117,6 +185,9 @@ def predecir_prioridad(severidad, osint_score, criticidad_activo, payload_malici
             "osint_score": float(osint_score),
             "severidad": int(severidad),
             "escalada_por_osint": False,
+            "destino_confiable": False,
+            "indicadores_debiles": [],
+            "indicadores_fuertes": [],
         }
 
 def generar_recomendacion(score, payload, osint, indicadores, firma, activo, criticidad):
@@ -264,6 +335,8 @@ def procesar_alertas():
         # Hacemos JOIN con activos para tener el contexto local
         cur.execute("""
             SELECT a.id, a.severidad, a.osint_score, a.payload_malicioso, a.indicadores_malware,
+                   a.vt_malicious, a.vt_suspicious, a.abuse_confidence, a.otx_pulse_count,
+                   a.gn_riot, a.gn_classification,
                    GREATEST(COALESCE(act.criticidad, 1), 1) as crit_act,
                    COALESCE(act.nombre, a.ip_destino) as activo_nombre,
                    a.firma
@@ -280,17 +353,54 @@ def procesar_alertas():
             return False
 
         for r in filas:
-            al_id, sev, osint, payload, ind, crit_act, activo_nombre, firma = r
+            (
+                al_id,
+                sev,
+                osint,
+                payload,
+                ind,
+                vt_malicious,
+                vt_suspicious,
+                abuse_confidence,
+                otx_pulse_count,
+                gn_riot,
+                gn_classification,
+                crit_act,
+                activo_nombre,
+                firma,
+            ) = r
             
             # Calcular score asegurando tipos nativos de Python
-            score, score_meta = predecir_prioridad(sev, osint, crit_act, payload, ind)
-            reco = generar_recomendacion(score, payload, osint, score_meta["indicadores"], firma, activo_nombre, crit_act)
+            score, score_meta = predecir_prioridad(
+                sev,
+                osint,
+                crit_act,
+                payload,
+                ind,
+                vt_malicious,
+                vt_suspicious,
+                abuse_confidence,
+                otx_pulse_count,
+                gn_riot,
+                gn_classification,
+            )
+            reco = generar_recomendacion(
+                score,
+                score_meta["payload_malicioso"],
+                osint,
+                score_meta["indicadores"],
+                firma,
+                activo_nombre,
+                crit_act,
+            )
             indicadores_texto = ", ".join(score_meta["indicadores"]) if score_meta["indicadores"] else "Sin indicadores específicos"
-            origen_critico = "payload/indicadores" if payload else ("OSINT" if score_meta["escalada_por_osint"] else "modelo")
+            origen_critico = "payload/indicadores" if score_meta["payload_malicioso"] else ("OSINT" if score_meta["escalada_por_osint"] else "modelo")
+            decision_contexto = "Destino confiable" if score_meta["destino_confiable"] else "Destino por validar"
             expli = (
                 f"IA Random Forest analizó contexto: Sev={sev}, OSINT={osint}, Activo={crit_act}. "
                 f"Probabilidad base={score_meta['prob_malicia']}%. Resultado: {score}% de riesgo. "
-                f"Origen criticidad={origen_critico}. Payload malicioso={bool(payload)}. "
+                f"Origen criticidad={origen_critico}. Payload malicioso={score_meta['payload_malicioso']}. "
+                f"{decision_contexto}. "
                 f"Indicadores malware={indicadores_texto}."
             )
 
@@ -305,8 +415,8 @@ def procesar_alertas():
             """, (score, expli, reco, al_id))
             
             status = "🔴 CRÍTICO" if score >= 85 else "🟡 ALERTA"
-            malware_estado = "True" if payload else "False"
-            motivo = "payload/indicadores" if payload else ("osint" if score_meta["escalada_por_osint"] else "modelo")
+            malware_estado = "True" if score_meta["payload_malicioso"] else "False"
+            motivo = "payload/indicadores" if score_meta["payload_malicioso"] else ("osint" if score_meta["escalada_por_osint"] else "modelo")
             indicadores_log = ", ".join(score_meta["indicadores"]) if score_meta["indicadores"] else "sin indicadores"
             print(
                 f"   [{status}] ID {al_id} -> Score: {score}% "

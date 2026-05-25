@@ -1,14 +1,14 @@
 #!/bin/sh
 set -e
 
-PROJECT_DIR="/opt/agente-ia"
+PROJECT_DIR="/opt/agente-ia-defensiva"
 ENV_FILE="$PROJECT_DIR/.env"
 EXAMPLE_FILE="$PROJECT_DIR/.env.example"
 VENV_DIR="$PROJECT_DIR/.venv"
-SERVICE_NAME="agente-ia"
-WEB_SERVICE="agente-ia-web"
-AGENT_SERVICE="agente-ia-agent"
-IA_SERVICE="agente-ia-ia"
+SERVICE_NAME="agente-ia-defensiva"
+WEB_SERVICE="agente-ia-defensiva-web"
+AGENT_SERVICE="agente-ia-defensiva-agent"
+IA_SERVICE="agente-ia-defensiva-ia"
 
 parse_env() {
   key="$1"

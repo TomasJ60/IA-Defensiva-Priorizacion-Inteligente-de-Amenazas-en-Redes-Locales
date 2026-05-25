@@ -57,10 +57,10 @@ function install_systemd_service() {
   fi
 
   local run_user="${SUDO_USER:-root}"
-  local service_path="/etc/systemd/system/agente-ia.service"
+  local service_path="/etc/systemd/system/agente-ia-defensiva.service"
   cat > "$service_path" <<EOF
 [Unit]
-Description=Agente IA Django Service
+Description=Agente IA Defensiva Django Service
 After=network.target postgresql.service
 Requires=postgresql.service
 
@@ -81,7 +81,7 @@ WantedBy=multi-user.target
 EOF
 
   systemctl daemon-reload
-  systemctl enable --now agente-ia >/dev/null 2>&1 || true
+  systemctl enable --now agente-ia-defensiva >/dev/null 2>&1 || true
   echo "Servicio systemd registrado en: $service_path"
 }
 

@@ -742,7 +742,7 @@ def _build_osint_engine_results(alerta):
             f"Familias: {(alerta.otx_malware_families or 'Sin familias')}"
         )
 
-    return [
+    engines = [
         {
             "name": "VirusTotal",
             "summary": vt_summary,
@@ -768,6 +768,15 @@ def _build_osint_engine_results(alerta):
             "available": otx_data_available,
         },
     ]
+    signal_sources = [engine["name"] for engine in engines if engine["has_signal"]]
+    external_signal_summary = ", ".join(signal_sources) if signal_sources else ""
+    fallback_summary = ""
+    if not signal_sources and (alerta.osint_score or 0) > 0:
+        if alerta.payload_malicioso or (alerta.indicadores_malware or "").strip():
+            fallback_summary = "El score alto no viene de un proveedor OSINT externo visible. En este caso parece impulsado por heuristica local, payload o indicadores detectados por el agente."
+        else:
+            fallback_summary = "La alerta conserva un score OSINT, pero no evidencia detallada por proveedor. Probablemente fue generada antes de guardar el desglose completo."
+    return engines, external_signal_summary, fallback_summary
 
 
 def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None):
@@ -795,7 +804,7 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None)
     ml_metrics["test_rows"] = model_metrics["test_rows"]
     ml_metrics["dataset_rows"] = model_metrics["dataset_rows"]
     osint_context_data = _build_osint_context(alerta, endpoint_index=endpoint_index)
-    osint_engines = _build_osint_engine_results(alerta)
+    osint_engines, osint_signal_sources, osint_signal_note = _build_osint_engine_results(alerta)
 
     if not can_view_sensitive:
         explanation = "Detalle restringido para este rol. Revisa con un analista o un administrador."
@@ -859,6 +868,8 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None)
         "otx_pulse_count": alerta.otx_pulse_count,
         "otx_tags": alerta.otx_tags,
         "otx_malware_families": alerta.otx_malware_families,
+        "osint_signal_sources": osint_signal_sources,
+        "osint_signal_note": osint_signal_note,
         "ml_metrics": ml_metrics,
         "osint_context": osint_context_data["summary"],
         "osint_context_data": osint_context_data,
