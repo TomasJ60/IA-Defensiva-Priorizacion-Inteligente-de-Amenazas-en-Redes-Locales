@@ -44,7 +44,7 @@ python agente.py
 Este paquete esta pensado para distribuciones basadas en Debian o Ubuntu.
 
 ```bash
-sudo dpkg -i agente-ia-defensiva_1.0.0_all.deb
+sudo dpkg -i agente-ia-defensiva_Version_Final.deb
 sudo apt-get install -f
 ```
 
