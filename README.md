@@ -1,156 +1,64 @@
-# Agente IA - Instalación completa
+# IA Defensiva: Priorizacion Inteligente de Amenazas en Redes Locales
 
-Este proyecto ahora incluye una instalación automatizada para Linux y un arranque rápido del dashboard web.
+Sistema de monitoreo defensivo para redes locales con captura de eventos, priorizacion de alertas, enriquecimiento OSINT y panel web para analisis operativo.
 
-## Qué hace el instalador
+Esta version del repositorio contiene solo el codigo y los archivos que forman parte del flujo funcional del proyecto. Tambien incluye el paquete Debian generado para despliegue rapido:
 
-- Instala los paquetes necesarios de Python y Suricata.
-- Instala PostgreSQL y crea la base de datos definida en `.env`.
-- Crea `.env` desde `.env.example` si no existe.
-- Instala las dependencias de Python en `.venv`.
-- Ejecuta las migraciones de Django.
-- Copia `suricata/local.rules` a `/etc/suricata/rules/local.rules`.
-- Actualiza la configuración de Suricata para incluir `local.rules`.
-- Trata de actualizar reglas con `suricata-update` cuando esté disponible.
+- `agente-ia_1.0.0_all.deb`
 
-## Instalación en Linux
+## Componentes incluidos
 
-Ejecuta el instalador desde la carpeta raíz del proyecto:
+- Dashboard web en Django para alertas, redes, activos y analisis.
+- Agente de ingesta en `src/agente.py`.
+- Motor IA/XAI en `src/ia_motor.py`.
+- Enriquecimiento OSINT integrado.
+- Scripts de instalacion y arranque.
+- Archivos `systemd` y empaquetado Debian.
 
-```bash
-sudo ./install.sh
-```
+## Estructura principal
 
-Si `sudo` no está disponible, ejecuta el script como root.
+- `web/`: aplicacion web Django.
+- `src/`: agente, motor IA y utilidades operativas.
+- `suricata/`: reglas locales.
+- `debian/`: definicion del paquete `.deb`.
+- `agente-ia_1.0.0_all.deb`: paquete listo para instalar en Debian/Ubuntu.
 
-## Instalador avanzado: bootstrap y paquete
-
-### Crear un paquete para compartir
-
-Desde el proyecto original, crea un paquete tar.gz con:
+## Ejecucion local
 
 ```bash
-./package-release.sh
+source .venv/bin/activate
+cd web
+python manage.py runserver
 ```
 
-Ese comando generará un archivo como `agente-ia-release-*.tar.gz`.
-
-### Instalar en otra máquina Linux
-
-Copia el paquete tar.gz y `bootstrap.sh` al equipo destino. Luego ejecuta:
+En otra terminal puedes ejecutar el agente:
 
 ```bash
-sudo ./bootstrap.sh --archive agente-ia-release-*.tar.gz
+source .venv/bin/activate
+cd src
+python agente.py
 ```
 
-Si tienes el paquete disponible en una URL pública, también puedes usar:
+## Instalacion mediante paquete Debian
 
-```bash
-sudo ./bootstrap.sh --url https://example.com/agente-ia-release.tar.gz
-```
-### Paquete Debian `.deb`
-
-También puedes crear el paquete Debian directamente con:
-
-```bash
-./build-deb.sh
-```
-
-Esto generará un archivo:
-
-```bash
-agente-ia_1.0.0_all.deb
-```
-
-Para instalarlo en otro equipo:
+Este paquete esta pensado para distribuciones basadas en Debian o Ubuntu.
 
 ```bash
 sudo dpkg -i agente-ia_1.0.0_all.deb
 sudo apt-get install -f
 ```
 
-El paquete `agente-ia` instala:
+Servicios instalados:
 
-- el proyecto en `/opt/agente-ia`
-- el servicio systemd `agente-ia`
-- PostgreSQL y Suricata como dependencias
-- el entorno virtual y las dependencias Python
-- reglas locales de Suricata en `/etc/suricata/rules/local.rules`
-### ¿Qué hace el bootstrap?
+- `agente-ia-web`
+- `agente-ia-agent`
+- `agente-ia-ia`
 
-- extrae el proyecto en un directorio destino
-- ejecuta `install.sh` automáticamente
-- instala Suricata, PostgreSQL y las dependencias Python
-- configura el servicio systemd para que el dashboard arranque solo
+## Configuracion
 
-## Inicio del dashboard
-
-Después de la instalación, inicia el servidor web con:
-
-```bash
-./start.sh
-```
-
-El servidor Django quedará disponible en:
-
-```text
-http://127.0.0.1:8000
-```
-
-## Credenciales iniciales de acceso
-
-Al instalar el proyecto, el instalador crea automáticamente un usuario administrador inicial si no existe uno.
-
-- Usuario: `admin`
-- Contraseña: `admin123`
-- Correo: `admin@example.com`
-
-Estos valores pueden modificarse en el archivo `.env` antes de ejecutar `install.sh` o durante la instalación del paquete Debian con las variables:
-
-```bash
-ADMIN_USERNAME=miadmin
-ADMIN_PASSWORD=mi_clave_segura
-ADMIN_EMAIL=admin@midominio.local
-```
-
-Si prefieres cambiar la contraseña después de la instalación, ejecuta:
-
-```bash
-cd /opt/agente-ia
-.source .venv/bin/activate
-python web/manage.py changepassword admin
-```
-
-Si tu entorno gráfico tiene `xdg-open`, el script intentará abrir esa URL automáticamente.
-
-## Configuración de Suricata
-
-- Las interfaces de red se detectan automáticamente en el dashboard de Suricata.
-- El sistema sugiere interfaces activas y las aplica directamente.
-- El archivo `suricata/local.rules` se usa para reglas locales.
-- Puedes agregar reglas personalizadas en `suricata/local.rules`.
-
-## Tráfico específico y reglas
-
-- El proyecto está diseñado para que Suricata se concentre en la red configurada por `HOME_NET`.
-- El dashboard y la configuración usan solo las interfaces activas que detecte el equipo.
-- Añade reglas locales específicas en `suricata/local.rules` para filtrar solo el tráfico que te interesa.
-
-## Pruebas y validación
-
-Este proyecto admite pruebas de:
-
-- criticidad (alertas clasificadas según gravedad)
-- OSINT (integración con proveedores externos)
-- explicabilidad (registrando decisiones e indicadores)
-
-Para que el sistema funcione bien, debes:
-
-1. Instalar con `sudo ./install.sh`.
-2. Iniciar con `./start.sh`.
-3. Configurar Suricata en el dashboard.
-4. Añadir reglas específicas en `suricata/local.rules`.
+- Usa `.env.example` como referencia para crear tu configuracion local.
+- El archivo `.env` real no se incluye en el repositorio.
 
 ## Nota
 
-Windows no está cubierto por este instalador. Si deseas soporte para Windows, podemos crear un instalador independiente o usar contenedores. Linux es el entorno recomendado para la instalación completa.
+Este repositorio fue depurado para conservar solo la parte operativa del proyecto y evitar archivos temporales, entornos virtuales, caches y componentes legacy que no participan en la ejecucion actual.
