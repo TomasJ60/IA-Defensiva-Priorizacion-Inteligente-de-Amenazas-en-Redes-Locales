@@ -58,6 +58,34 @@
     font-size: 13px;
     margin: 4px 0;
   }
+
+  .engine-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .engine-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 12px;
+  }
+
+  .engine-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .engine-summary {
+    font-size: 12px;
+    color: var(--muted2);
+    line-height: 1.5;
+  }
 </style>
 
 <div class="page-header">
@@ -116,7 +144,7 @@
   {% for alerta in alertas_osint_recientes %}
   <div class="alert-osint-card">
     <div class="alert-osint-head">
-      <strong>{{ alerta.service_detected|default:"Servicio desconocido" }}</strong>
+      <strong>{{ alerta.activo_afectado|default:alerta.service_detected|default:"Servicio desconocido" }}</strong>
       <span class="badge {% if alerta.is_whitelisted %}bl{% elif alerta.prioridad_ia >= 80 %}bc{% elif alerta.prioridad_ia >= 55 %}bh{% else %}bm{% endif %}">
         {% if alerta.is_whitelisted %}
         Lista blanca
@@ -130,7 +158,29 @@
     <div class="alert-osint-row">Destino resuelto: {{ alerta.destination_label|default:"No identificado" }}</div>
     <div class="alert-osint-row">Tipo de tráfico: {{ alerta.traffic_type|default:"No clasificado" }}</div>
     <div class="alert-osint-row">Reputación OSINT: {{ alerta.osint_reputation|default:"Sin información" }}</div>
-    <div class="alert-osint-row">VT: {{ alerta.vt_malicious|default:"0" }} maliciosos, {{ alerta.abuse_confidence|default:"0" }}% AbuseIPDB, {{ alerta.otx_pulse_count|default:"0" }} pulsos OTX</div>
+    <div class="alert-osint-row">OSINT score: {{ alerta.osint_score|default:"0"|floatformat:1 }}</div>
+    <div class="engine-grid">
+      {% for engine in alerta.osint_engines %}
+      <div class="engine-card">
+        <div class="engine-head">
+          <strong>{{ engine.name }}</strong>
+          <span class="badge {% if engine.has_signal %}bc{% elif engine.available %}bl{% else %}bm{% endif %}">
+            {% if engine.has_signal %}
+            Hallazgos
+            {% elif engine.available %}
+            Sin hallazgos
+            {% else %}
+            Sin datos
+            {% endif %}
+          </span>
+        </div>
+        <div class="engine-summary">{{ engine.summary }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if alerta.indicadores_malware %}
+    <div class="alert-osint-row" style="margin-top:12px;">Indicadores de malware: {{ alerta.indicadores_malware|join:", " }}</div>
+    {% endif %}
     <div class="alert-osint-meta">{{ alerta.fecha_display }} {{ alerta.hora_display }}</div>
   </div>
   {% empty %}

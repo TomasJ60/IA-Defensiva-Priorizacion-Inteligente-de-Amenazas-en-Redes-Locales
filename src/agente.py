@@ -10,6 +10,7 @@ import sys
 import json
 import time
 import logging
+import ipaddress
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -30,7 +31,16 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("agente")
 
 log_file = "/var/log/suricata/eve.json"
-MONITORED_IPS = {"192.168.100.2", "192.168.100.10"}  # <--- IPs cuyo tráfico queremos ver
+MONITORED_IPS = set(
+    item.strip()
+    for item in os.getenv("MONITORED_IPS", "192.168.100.2,192.168.100.10").split(",")
+    if item.strip()
+)
+MONITORED_NETWORKS = [
+    ipaddress.ip_network(item.strip(), strict=False)
+    for item in os.getenv("MONITORED_NETWORKS", "").split(",")
+    if item.strip()
+]
 
 # Palabras clave de malware
 MALWARE_KEYWORDS = ["ransomware", "trojan", "worm", "backdoor", "shellcode", "exploit", "wannacry"]
@@ -213,6 +223,19 @@ def calcular_score_amenaza_aumentado(osint_data, indicadores_payload, base_sever
     if len(indicadores_payload) > 0: score_final *= 1.4
     return min(round(score_final, 1), 100.0)
 
+
+def _ip_is_monitored(ip):
+    if not ip:
+        return False
+    if ip in MONITORED_IPS:
+        return True
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(addr in net for net in MONITORED_NETWORKS)
+
+
 def procesar():
     try:
         conn = get_db_connection()
@@ -222,6 +245,8 @@ def procesar():
 
     print("=" * 60)
     print(f"🚀 AGENTE MONITOREANDO IPS: {', '.join(sorted(MONITORED_IPS))}")
+    if MONITORED_NETWORKS:
+        print(f"🚀 AGENTE MONITOREANDO REDES: {', '.join(str(net) for net in MONITORED_NETWORKS)}")
     print("=" * 60)
 
     if not os.path.exists(log_file): return
@@ -236,11 +261,11 @@ def procesar():
             try:
                 data = json.loads(linea)
                 
-                # 🛡️ FILTRO DE SEGURIDAD: Solo IPs monitorizadas 🛡️
+                # 🛡️ FILTRO DE SEGURIDAD: Solo IPs o redes monitorizadas 🛡️
                 src = data.get("src_ip", "")
                 dst = data.get("dest_ip", "")
-                if src not in MONITORED_IPS and dst not in MONITORED_IPS:
-                    continue # Ignora tráfico fuera de los endpoints vigilados
+                if not _ip_is_monitored(src) and not _ip_is_monitored(dst):
+                    continue # Ignora tráfico fuera de los endpoints/redes vigiladas
 
                 event_type = data.get("event_type")
                 if event_type not in ["alert", "dns", "http", "tls", "flow"]:

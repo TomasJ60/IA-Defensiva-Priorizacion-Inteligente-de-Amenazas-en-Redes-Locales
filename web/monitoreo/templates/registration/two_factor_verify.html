@@ -75,7 +75,7 @@ body::after{
 <body>
 <div class="page">
   <div class="brand">
-    <div class="brand-icon">🤖</div>
+    <div class="brand-icon">AI</div>
     <div>
       <div class="brand-name">Agente IA</div>
       <div class="brand-sub">Acceso reforzado</div>
@@ -84,17 +84,16 @@ body::after{
 
   <div class="card">
     <div class="shield-wrap">
-      <div class="shield">🛡️<div class="shield-ring"></div><div class="shield-ring2"></div></div>
+      <div class="shield">2FA<div class="shield-ring"></div><div class="shield-ring2"></div></div>
     </div>
     <div class="card-title">Verificacion en dos pasos</div>
     <div class="card-sub">Introduce el codigo de tu aplicacion autenticadora para completar el acceso a la herramienta del analista.</div>
 
     {% if error %}
-    <div class="alert-err">⚠️ <span>{{ error }}</span></div>
+    <div class="alert-err"><span>{{ error }}</span></div>
     {% endif %}
 
     <div class="info-box">
-      <span>⌚</span>
       <span>Hora actual del servidor: <strong>{{ server_time|date:"Y-m-d H:i:s T" }}</strong></span>
     </div>
 

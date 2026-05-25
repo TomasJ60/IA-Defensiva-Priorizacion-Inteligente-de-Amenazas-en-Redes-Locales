@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+.DS_Store
+debbuild/
+dist/
+build/
+*.tar.gz
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/

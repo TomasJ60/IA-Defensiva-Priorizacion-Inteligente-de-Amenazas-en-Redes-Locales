@@ -27,6 +27,16 @@ load_dotenv(dotenv_path=PROJECT_DIR / ".env")
 
 IA_CRITICAL_THRESHOLD = float(os.getenv("IA_CRITICAL_THRESHOLD", "85.0"))
 
+THREAT_PATTERNS = {
+    "malware": ["ransomware", "trojan", "worm", "backdoor", "malware", "shellcode", "payload"],
+    "phishing": ["phishing", "phish", "credential", "spoof", "login attempt"],
+    "scan": ["scan", "syn-rst", "portscan", "recon", "rafaga tcp", "icmp", "probe"],
+    "web_attack": ["sql", "xss", "http", "web attack", "exploit kit", "command injection"],
+    "lateral_movement": ["smb", "psexec", "rdp", "winrm", "ssh brute", "lateral"],
+    "c2": ["command-and-control", "c2", "beacon", "callback", "botnet"],
+    "dns_abuse": ["dns", "domain", "tunneling", "dnscat", "query"],
+}
+
 # ============================================================
 # CARGA DE MODELO
 # ============================================================
@@ -118,37 +128,128 @@ def generar_recomendacion(score, payload, osint, indicadores, firma, activo, cri
     criticidad = int(criticidad)
     payload = bool(payload)
     indicadores = [item for item in indicadores if item] if indicadores else []
-    indicador_texto = f" Indicadores: {', '.join(indicadores)}." if indicadores else ""
     firma_clara = firma.strip() if firma else "Alerta sin firma detallada"
-    origen = "Detección de malware" if payload else ("Reputación OSINT crítica" if osint > 80 else "Análisis interno de riesgo")
+    threat_type = inferir_tipo_amenaza(firma_clara, indicadores, payload, osint)
+    severity_label = obtener_nivel_prioridad(score)
+    impact_text = describir_impacto(threat_type, criticidad, activo)
+    action_plan = construir_plan_accion(threat_type, score, payload, osint, criticidad, activo)
+    indicator_text = f" Indicadores observados: {', '.join(indicadores)}." if indicadores else ""
+    justification = construir_justificacion(threat_type, score, payload, osint, criticidad)
 
-    if payload or osint > 80 or score >= IA_CRITICAL_THRESHOLD:
-        return (
-            f"🔥 CRÍTICO: {origen} para {activo} (criticidad {criticidad}). Score IA {score:.1f}%.{indicador_texto} "
-            f"DIAGNÓSTICO TÉCNICO: {firma_clara} indica una amenaza con alta probabilidad de compromiso y movimiento lateral. "
-            "PLAN DE ACCIÓN INMEDIATO: 1) Aislar el origen/destino identificado. "
-            "2) Revisar logs de red, procesos y conexiones asociadas. "
-            "3) Verificar integridad de archivos, reglas de seguridad y reputación de la IP. "
-            "JUSTIFICACIÓN OSINT: La reputación observada y los indicadores de malware elevan la prioridad a respuesta inmediata."
-        )
-    elif score >= 60:
-        return (
-            f"⚠️ ALERTA MEDIA: {origen}. Score IA {score:.1f}% para {activo} (criticidad {criticidad}).{indicador_texto} "
-            f"DIAGNÓSTICO TÉCNICO: {firma_clara} sugiere actividad potencialmente sospechosa que requiere verificación. "
-            "PLAN DE ACCIÓN INMEDIATO: 1) Corroborar logs de eventos y tráfico. "
-            "2) Revisar reputación de IP y contexto del activo. "
-            "3) Mantener monitoreo activo y escalar si el patrón persiste. "
-            "JUSTIFICACIÓN OSINT: La reputación observada apoya la necesidad de un análisis inmediato."
-        )
-    else:
-        return (
-            f"✅ ALERTA BAJA: Score IA {score:.1f}% para {activo}. {indicador_texto} "
-            f"DIAGNÓSTICO TÉCNICO: {firma_clara} no muestra señales de compromiso inmediato. "
-            "PLAN DE ACCIÓN INMEDIATO: 1) Continuar monitoreando el incidente. "
-            "2) Revisar nuevamente si cambia la reputación o aparecen nuevos indicadores. "
-            "3) Preparar respuesta rápida si la severidad aumenta. "
-            "JUSTIFICACIÓN OSINT: La reputación actual no exige intervención urgente, pero conviene mantener el análisis."
-        )
+    return (
+        f"{severity_label}: {impact_text}. "
+        f"Firma analizada: {firma_clara}. "
+        f"Score IA: {score:.1f} sobre 100.{indicator_text} "
+        f"Accion sugerida para el analista: {action_plan} "
+        f"Motivo: {justification}"
+    )
+
+
+def inferir_tipo_amenaza(firma, indicadores, payload, osint):
+    texto = " ".join([firma or "", " ".join(indicadores or [])]).lower()
+    if payload:
+        return "malware"
+    if osint >= 80:
+        return "c2"
+
+    for threat_type, patterns in THREAT_PATTERNS.items():
+        if any(pattern in texto for pattern in patterns):
+            return threat_type
+    return "actividad_sospechosa"
+
+
+def obtener_nivel_prioridad(score):
+    if score >= 90:
+        return "Prioridad critica"
+    if score >= 75:
+        return "Prioridad alta"
+    if score >= 55:
+        return "Prioridad media"
+    return "Prioridad baja"
+
+
+def describir_impacto(threat_type, criticidad, activo):
+    base = {
+        "malware": "Posible compromiso activo o ejecucion de codigo malicioso",
+        "phishing": "Intento de engaño o captura de credenciales",
+        "scan": "Actividad de reconocimiento o enumeracion de servicios",
+        "web_attack": "Intento de explotacion sobre servicio web",
+        "lateral_movement": "Posible movimiento lateral entre equipos internos",
+        "c2": "Comunicacion con infraestructura de mando y control o IP con reputacion muy alta",
+        "dns_abuse": "Uso anomalo de DNS que podria ocultar exfiltracion o resolucion maliciosa",
+        "actividad_sospechosa": "Actividad anomala que requiere validacion contextual",
+    }.get(threat_type, "Actividad anomala que requiere validacion contextual")
+
+    if criticidad >= 4:
+        return f"{base} sobre un activo sensible: {activo}"
+    return f"{base} sobre {activo}"
+
+
+def construir_plan_accion(threat_type, score, payload, osint, criticidad, activo):
+    containment = "aislar temporalmente el host o el flujo afectado" if score >= IA_CRITICAL_THRESHOLD or payload else "mantener el flujo bajo observacion reforzada"
+
+    plans = {
+        "malware": (
+            f"1) {containment}; "
+            "2) revisar procesos, archivos recientes, persistencia y conexiones salientes del equipo; "
+            "3) obtener IOC de la firma y buscar si aparecen en otros hosts."
+        ),
+        "phishing": (
+            "1) validar si el dominio, correo o IP ya fue visto por usuarios internos; "
+            "2) revisar intentos de autenticacion y cambios recientes en cuentas relacionadas; "
+            "3) bloquear el origen si se confirma el intento de suplantacion."
+        ),
+        "scan": (
+            "1) confirmar si el origen pertenece a pruebas autorizadas o inventario interno; "
+            "2) revisar puertos destino y frecuencia de los intentos en los ultimos minutos; "
+            "3) aplicar bloqueo perimetral o regla de IDS si el patron continua."
+        ),
+        "web_attack": (
+            "1) revisar logs HTTP y parametros solicitados al servicio; "
+            "2) verificar si hubo errores 4xx/5xx, ejecucion anomala o cambios en la aplicacion; "
+            "3) endurecer reglas WAF o bloqueo del origen segun evidencia."
+        ),
+        "lateral_movement": (
+            "1) revisar autenticaciones laterales, sesiones remotas y uso de credenciales administrativas; "
+            "2) contrastar el origen con ventanas de mantenimiento autorizadas; "
+            "3) segmentar o bloquear el acceso entre equipos si no hay justificacion operativa."
+        ),
+        "c2": (
+            "1) revisar conexiones repetitivas hacia la IP o dominio indicado; "
+            "2) validar reputacion externa, puertos y frecuencia del beaconing; "
+            "3) contener la comunicacion y buscar persistencia en el host afectado."
+        ),
+        "dns_abuse": (
+            "1) inspeccionar el dominio consultado y la frecuencia de consultas DNS; "
+            "2) validar si existe tunelizacion o resolucion hacia infraestructura no autorizada; "
+            "3) bloquear el dominio o resolver alternativo si se confirma abuso."
+        ),
+        "actividad_sospechosa": (
+            "1) revisar el contexto del activo, el origen y el momento del evento; "
+            "2) contrastar con logs de red y sistema para descartar falso positivo; "
+            "3) escalar a contencion si aparecen nuevas alertas relacionadas."
+        ),
+    }
+
+    plan = plans.get(threat_type, plans["actividad_sospechosa"])
+    if osint >= 70 and "reputacion" not in plan.lower():
+        plan += " 4) validar reputacion del origen y del destino con las fuentes OSINT disponibles."
+    if criticidad >= 5:
+        plan += f" 5) priorizar la revision porque {activo} tiene criticidad maxima."
+    return plan
+
+
+def construir_justificacion(threat_type, score, payload, osint, criticidad):
+    reasons = [f"el modelo asigno {score:.1f} puntos"]
+    if payload:
+        reasons.append("se detectaron indicadores de payload malicioso")
+    if osint >= 60:
+        reasons.append(f"la reputacion OSINT es elevada ({osint:.1f})")
+    if criticidad >= 4:
+        reasons.append(f"el activo tiene criticidad {criticidad}/5")
+    if threat_type != "actividad_sospechosa":
+        reasons.append(f"el patron coincide con un escenario de {threat_type.replace('_', ' ')}")
+    return "; ".join(reasons) + "."
 
 # ============================================================
 # PROCESAMIENTO DE ALERTAS

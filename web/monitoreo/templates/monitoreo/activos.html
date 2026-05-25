@@ -60,7 +60,7 @@
   {% for activo in activos_con_alertas %}
   <div class="asset-card">
     <div class="asset-hd">
-      <div class="asset-ico">🖥️</div>
+      <div class="asset-ico"></div>
       <div>
         <div class="asset-name">{{ activo.nombre }}</div>
         <div class="asset-ip">{% if can_view_sensitive_data %}{{ activo.ip }}{% else %}{{ activo.ip|mask_ip }}{% endif %}</div>
@@ -85,14 +85,14 @@
     <div class="asset-actions">
         <!-- Botón para mostrar formulario de edición -->
         <button type="button" class="badge btn-edit" onclick="toggleEdit('{{ activo.id }}')">
-            <i class="bi bi-pencil"></i> Editar
+            Editar
         </button>
 
         <!-- Botón para eliminar (dentro de un form para seguridad) -->
         <form action="{% url 'eliminar_activo' activo.id %}" method="post" onsubmit="return confirm('¿Estás seguro de eliminar este activo?');" style="margin:0;">
             {% csrf_token %}
             <button type="submit" class="badge btn-delete">
-                <i class="bi bi-trash"></i> Eliminar
+                Eliminar
             </button>
         </form>
     </div>

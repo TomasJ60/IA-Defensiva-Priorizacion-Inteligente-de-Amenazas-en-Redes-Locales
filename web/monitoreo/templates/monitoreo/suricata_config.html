@@ -221,6 +221,18 @@
       <input type="text" id="interfaces" name="interfaces" class="form-input" 
              value="{{ config.interfaces }}" placeholder="enp0s8,eth0,wlan0" required>
       <div class="form-help">Ejemplos: enp0s8 (interfaz secundaria), eth0 (cableada), wlan0 (wifi)</div>
+      {% if available_interfaces %}
+      <div class="form-help" style="margin-top: 6px;">
+        Interfaces detectadas en este equipo: <strong>{{ available_interfaces|join:", " }}</strong>.
+        {% if config_is_default %}
+          Se recomienda usar: <strong>{{ suggested_interfaces }}</strong>.
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="form-help" style="margin-top: 6px;">
+        No se detectaron interfaces automáticamente. Introduce la interfaz manualmente o revisa la red del equipo.
+      </div>
+      {% endif %}
     </div>
 
     <div class="form-group">
@@ -237,15 +249,15 @@
 
     <div class="form-group">
       <div class="btn-group">
-        <button type="submit" class="btn-submit" id="save-btn">💾 Guardar Configuración</button>
-        <button type="button" class="btn-delete" id="reset-btn">🗑️ Borrar Configuración</button>
+        <button type="submit" class="btn-submit" id="save-btn">Guardar configuracion</button>
+        <button type="button" class="btn-delete" id="reset-btn">Borrar configuracion</button>
       </div>
-      <div class="loading" id="loading">⏳ Aplicando configuración...</div>
+      <div class="loading" id="loading">Aplicando configuracion...</div>
     </div>
   </form>
 
   <div class="status-box {% if config.is_active %}active{% else %}inactive{% endif %}" id="status-box">
-    <h3 style="margin-top: 0;">📊 Estado Actual</h3>
+    <h3 style="margin-top: 0;">Estado actual</h3>
     
     <div class="status-row">
       <span class="status-label">Interfaces:</span>

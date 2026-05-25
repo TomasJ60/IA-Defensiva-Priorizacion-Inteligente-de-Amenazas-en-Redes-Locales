@@ -2,155 +2,462 @@
 {% block title %}Agente IA — Redes{% endblock %}
 {% block dashboard_content %}
 <style>
-  .network-grid {
+  .network-layout {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 16px;
+    gap: 18px;
   }
 
-  .network-card {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--r);
+  .network-panel {
+    background:
+      radial-gradient(circle at top right, rgba(74, 143, 255, 0.16), transparent 36%),
+      linear-gradient(180deg, rgba(18, 24, 33, 0.98), rgba(10, 14, 20, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  }
+
+  .network-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .network-panel-title {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .network-panel-sub {
+    font-size: 13px;
+    color: var(--muted2);
+    max-width: 720px;
+    line-height: 1.6;
+  }
+
+  .filter-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+    gap: 18px;
+  }
+
+  .filter-box,
+  .machine-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
     padding: 18px;
   }
 
-  .network-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+  .field-stack {
+    display: grid;
     gap: 12px;
-    margin-bottom: 12px;
   }
 
-  .network-name {
+  .field-label {
+    font-size: 12px;
     font-weight: 600;
-    font-size: 16px;
+    color: var(--muted2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
-  .network-ip {
+  .field-input,
+  .field-toggle {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(8, 11, 17, 0.9);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .field-input:focus {
+    outline: none;
+    border-color: rgba(74, 143, 255, 0.65);
+    box-shadow: 0 0 0 4px rgba(74, 143, 255, 0.12);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-chip {
+    border: none;
+    border-radius: 999px;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .btn-danger:hover,
+  .btn-chip:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    box-shadow: 0 10px 22px rgba(74, 143, 255, 0.26);
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .btn-danger {
+    background: rgba(232, 65, 74, 0.14);
+    color: var(--critical);
+    border: 1px solid rgba(232, 65, 74, 0.24);
+  }
+
+  .btn-chip {
+    background: rgba(61, 184, 130, 0.14);
+    color: var(--low);
+    border: 1px solid rgba(61, 184, 130, 0.22);
+  }
+
+  .status-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted2);
+    font-size: 13px;
+  }
+
+  .status-pill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .status-pill.live {
+    background: rgba(61, 184, 130, 0.14);
+    color: var(--low);
+  }
+
+  .status-pill.all {
+    background: rgba(74, 143, 255, 0.14);
+    color: var(--accent);
+  }
+
+  .status-pill.empty {
+    background: rgba(212, 168, 67, 0.14);
+    color: var(--medium);
+  }
+
+  .machine-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 18px;
+  }
+
+  .machine-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .machine-card {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .machine-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .machine-name {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .machine-ip {
     font-family: var(--mono);
     font-size: 12px;
     color: var(--muted2);
-    margin-top: 4px;
+    margin-top: 3px;
   }
 
-  .network-meta {
+  .machine-status {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .machine-status.on {
+    background: rgba(61, 184, 130, 0.14);
+    color: var(--low);
+  }
+
+  .machine-status.off {
+    background: rgba(232, 65, 74, 0.14);
+    color: var(--critical);
+  }
+
+  .machine-meta {
     font-size: 12px;
     color: var(--muted2);
-    margin: 6px 0;
+    line-height: 1.65;
   }
 
-  .network-actions {
+  .machine-actions {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-top: 14px;
   }
 
-  .network-actions form {
+  .machine-actions form {
     margin: 0;
   }
 
-  .btn-action {
-    border: none;
-    cursor: pointer;
+  .empty-box {
+    padding: 22px;
+    border-radius: 16px;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    color: var(--muted2);
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  @media (max-width: 980px) {
+    .filter-grid,
+    .machine-form {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
 
 <div class="page-header">
   <div>
     <div class="page-title">Redes monitorizadas</div>
-    <div class="page-sub">Configura qué máquinas virtuales o nodos quedan habilitados para filtrar el tráfico visible del dashboard y verifica conectividad real con ping.</div>
+    <div class="page-sub">Pantalla simplificada para filtrar tráfico y registrar máquinas que quieras verificar desde el SOC.</div>
   </div>
 </div>
 
-{% if is_admin_user %}
-<div class="card" style="margin-bottom:18px">
-  <div class="card-title">Registrar máquina o red objetivo</div>
-  <form action="{% url 'agregar_endpoint_monitoreado' %}" method="post" class="form-inline" style="grid-template-columns:repeat(3,1fr) auto">
-    {% csrf_token %}
-    <input type="text" name="nombre" placeholder="Nombre de la máquina" required>
-    <input type="text" name="ip" placeholder="IP de la VM o nodo" required>
-    <input type="text" name="descripcion" placeholder="Descripción opcional">
-    <button type="submit" class="nav-tab active" style="justify-content:center; cursor:pointer;">Guardar objetivo</button>
-  </form>
-</div>
-{% endif %}
-
-<div class="card" style="margin-bottom:18px">
-  <div class="card-title">Filtro activo</div>
-  {% if enabled_monitored_ips %}
-  <div class="fact-val">El dashboard está mostrando tráfico únicamente asociado a: {{ enabled_monitored_ips|join:", " }}</div>
-  {% else %}
-  <div class="fact-val">No hay objetivos habilitados. En este estado se muestra el tráfico completo disponible para el SOC.</div>
-  {% endif %}
-</div>
-
-<div class="network-grid">
-  {% for endpoint in monitored_endpoints %}
-  <div class="network-card">
-    <div class="network-head">
+<div class="network-layout">
+  <section class="network-panel">
+    <div class="network-panel-head">
       <div>
-        <div class="network-name">{{ endpoint.nombre }}</div>
-        <div class="network-ip">{{ endpoint.ip }}</div>
+        <div class="network-panel-title">Filtro de tráfico</div>
+        <div class="network-panel-sub">Define qué IPs o redes quieres observar y deja listo un filtro rápido para cambiar el alcance del monitoreo sin salir del SOC.</div>
       </div>
-      <span class="badge {% if endpoint.is_enabled %}bl{% else %}bc{% endif %}">
-        {% if endpoint.is_enabled %}Encendido{% else %}Apagado{% endif %}
-      </span>
     </div>
 
-    {% if endpoint.descripcion %}
-    <div class="network-meta">{{ endpoint.descripcion }}</div>
+    <div class="filter-grid">
+      <div class="filter-box">
+        {% if is_admin_user %}
+        <form action="{% url 'dashboard_redes' %}" method="post" class="field-stack">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="network_filters">
+
+          <label class="field-label" for="MONITORED_IPS">IPs monitorizadas</label>
+          <input id="MONITORED_IPS" name="MONITORED_IPS" class="field-input" value="{{ monitored_ips }}" placeholder="192.168.100.2,10.0.2.15">
+
+          <label class="field-label" for="MONITORED_NETWORKS">Redes CIDR monitorizadas</label>
+          <input id="MONITORED_NETWORKS" name="MONITORED_NETWORKS" class="field-input" value="{{ monitored_networks }}" placeholder="192.168.100.0/24,10.0.2.0/24">
+
+          <div class="btn-row">
+            <button type="submit" class="btn-primary">Guardar filtros</button>
+          </div>
+        </form>
+        {% else %}
+        <div class="field-stack">
+          <div class="status-line">
+            <span class="status-pill empty">SOLO LECTURA</span>
+            Pide a un administrador si necesitas cambiar los filtros.
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="filter-box">
+        <div class="field-stack">
+          <label class="field-label" for="quick_filter_ip">Filtro rápido</label>
+          <input type="text" id="quick_filter_ip" class="field-input" placeholder="Filtrar por IP de origen o destino" value="{{ quick_filter_ip }}" onkeypress="if(event.key==='Enter') aplicarFiltros()">
+
+          <label class="status-line" style="cursor:pointer;">
+            <input type="checkbox" id="show_all_traffic" {% if show_all_traffic %}checked{% endif %} onchange="aplicarFiltros()">
+            Mostrar todo el tráfico disponible
+          </label>
+
+          <div class="btn-row">
+            <button type="button" class="btn-primary" onclick="aplicarFiltros()">Aplicar filtro</button>
+            <button type="button" class="btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
+          </div>
+
+          <div class="status-line">
+            {% if quick_filter_ip %}
+            <span class="status-pill live">FILTRADO</span>
+            Mostrando eventos relacionados con <strong>{{ quick_filter_ip }}</strong>.
+            {% elif show_all_traffic %}
+            <span class="status-pill all">TRAFICO TOTAL</span>
+            Se está mostrando todo el tráfico capturado.
+            {% elif monitored_ips or monitored_networks %}
+            <span class="status-pill live">FILTRO GLOBAL</span>
+            Se están usando las IPs y redes configuradas arriba.
+            {% else %}
+            <span class="status-pill empty">SIN FILTRO</span>
+            No hay filtros guardados todavía.
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="network-panel">
+    <div class="network-panel-head">
+      <div>
+        <div class="network-panel-title">Registrar máquina a verificar</div>
+        <div class="network-panel-sub">Agrega hosts que quieras probar con ping y mantén a mano sus acciones de verificación, activación y eliminación.</div>
+      </div>
+    </div>
+
+    {% if is_admin_user %}
+    <form action="{% url 'agregar_endpoint_monitoreado' %}" method="post" class="machine-form">
+      {% csrf_token %}
+      <input type="text" name="nombre" class="field-input" placeholder="Nombre de la máquina" required>
+      <input type="text" name="ip" class="field-input" placeholder="IP de la máquina" required>
+      <input type="text" name="descripcion" class="field-input" placeholder="Descripción opcional">
+      <button type="submit" class="btn-primary">Registrar</button>
+    </form>
     {% endif %}
 
-    <div class="network-meta">
-      Última verificación:
-      {% if endpoint.last_checked_at %}
-      {{ endpoint.last_checked_at }}
-      {% else %}
-      Sin verificar todavía
-      {% endif %}
+    <div class="machine-grid">
+      {% for endpoint in monitored_endpoints %}
+      <article class="machine-card">
+        <div class="machine-top">
+          <div>
+            <div class="machine-name">{{ endpoint.nombre }}</div>
+            <div class="machine-ip">{{ endpoint.ip }}</div>
+          </div>
+          <span class="machine-status {% if endpoint.is_enabled %}on{% else %}off{% endif %}">
+            {% if endpoint.is_enabled %}Activa{% else %}Inactiva{% endif %}
+          </span>
+        </div>
+
+        {% if endpoint.descripcion %}
+        <div class="machine-meta">{{ endpoint.descripcion }}</div>
+        {% endif %}
+
+        <div class="machine-meta">
+          Última verificación:
+          {% if endpoint.last_checked_at %}
+          {{ endpoint.last_checked_at }}
+          {% else %}
+          Sin verificar todavía
+          {% endif %}
+        </div>
+
+        <div class="machine-meta">
+          Estado:
+          {% if endpoint.last_is_reachable is True %}
+          Alcanzable{% if endpoint.last_latency_ms %} · {{ endpoint.last_latency_ms|floatformat:2 }} ms{% endif %}
+          {% elif endpoint.last_is_reachable is False %}
+          Sin respuesta
+          {% else %}
+          Sin datos
+          {% endif %}
+        </div>
+
+        {% if endpoint.last_message %}
+        <div class="machine-meta">{{ endpoint.last_message }}</div>
+        {% endif %}
+
+        {% if is_admin_user %}
+        <div class="machine-actions">
+          <form action="{% url 'toggle_endpoint_monitoreado' endpoint.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="{% if endpoint.is_enabled %}btn-danger{% else %}btn-chip{% endif %}">
+              {% if endpoint.is_enabled %}Desactivar filtro{% else %}Activar filtro{% endif %}
+            </button>
+          </form>
+
+          <form action="{% url 'verificar_endpoint_monitoreado' endpoint.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn-secondary">Verificar ping</button>
+          </form>
+
+          <form action="{% url 'eliminar_endpoint_monitoreado' endpoint.id %}" method="post" onsubmit="return confirm('¿Eliminar este objetivo monitorizado?');">
+            {% csrf_token %}
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+        </div>
+        {% endif %}
+      </article>
+      {% empty %}
+      <div class="empty-box">Todavía no has registrado máquinas para verificar conectividad.</div>
+      {% endfor %}
     </div>
-
-    <div class="network-meta">
-      Estado:
-      {% if endpoint.last_is_reachable is True %}
-      Alcanzable{% if endpoint.last_latency_ms %} · {{ endpoint.last_latency_ms|floatformat:2 }} ms{% endif %}
-      {% elif endpoint.last_is_reachable is False %}
-      Sin respuesta
-      {% else %}
-      Sin datos
-      {% endif %}
-    </div>
-
-    {% if endpoint.last_message %}
-    <div class="network-meta">{{ endpoint.last_message }}</div>
-    {% endif %}
-
-    <div class="network-actions">
-      {% if is_admin_user %}
-      <form action="{% url 'toggle_endpoint_monitoreado' endpoint.id %}" method="post">
-        {% csrf_token %}
-        <button type="submit" class="badge btn-action {% if endpoint.is_enabled %}bc{% else %}bl{% endif %}">
-          {% if endpoint.is_enabled %}Apagar filtro{% else %}Encender filtro{% endif %}
-        </button>
-      </form>
-
-      <form action="{% url 'verificar_endpoint_monitoreado' endpoint.id %}" method="post">
-        {% csrf_token %}
-        <button type="submit" class="badge btn-action bi">Verificar ping</button>
-      </form>
-
-      <form action="{% url 'eliminar_endpoint_monitoreado' endpoint.id %}" method="post" onsubmit="return confirm('¿Eliminar este objetivo monitorizado?');">
-        {% csrf_token %}
-        <button type="submit" class="badge btn-action bc">Eliminar</button>
-      </form>
-      {% endif %}
-    </div>
-  </div>
-  {% empty %}
-  <div class="card empty">Todavía no has registrado máquinas monitorizadas.</div>
-  {% endfor %}
+  </section>
 </div>
+
+<script>
+  let lastSeenAlertId = {{ latest_alert_id|default:0 }};
+
+  function aplicarFiltros() {
+    const showAll = document.getElementById('show_all_traffic').checked ? 'true' : 'false';
+    const quickFilterIp = document.getElementById('quick_filter_ip').value.trim();
+    let url = '{% url "dashboard_redes" %}?show_all_traffic=' + showAll;
+    if (quickFilterIp) {
+      url += '&quick_filter_ip=' + encodeURIComponent(quickFilterIp);
+    }
+    window.location.href = url;
+  }
+
+  function limpiarFiltros() {
+    document.getElementById('show_all_traffic').checked = false;
+    document.getElementById('quick_filter_ip').value = '';
+    window.location.href = '{% url "dashboard_redes" %}';
+  }
+
+  function verificarNuevasAlertasRedes() {
+    if (document.hidden) {
+      return;
+    }
+
+    fetch('{% url "check_alerts" %}')
+      .then(response => response.json())
+      .then(data => {
+        if (data.id && data.id > lastSeenAlertId) {
+          lastSeenAlertId = data.id;
+          location.reload();
+        }
+      })
+      .catch(error => console.error('Error verificando alertas de redes:', error));
+  }
+  setInterval(verificarNuevasAlertasRedes, 5000);
+</script>
 {% endblock %}

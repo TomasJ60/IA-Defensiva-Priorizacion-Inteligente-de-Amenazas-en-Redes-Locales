@@ -1,5 +1,6 @@
 import ipaddress
 import json
+import os
 import re
 import subprocess
 import tldextract
@@ -110,6 +111,88 @@ def _run_ping_check(ip_address):
         "latency_ms": latency_ms,
         "message": "Sin respuesta al ping.",
     }
+
+
+def _parse_ip_link_output(output):
+    interfaces = []
+    for line in output.splitlines():
+        parts = line.split(':', 2)
+        if len(parts) < 2:
+            continue
+        name = parts[1].strip().split('@')[0]
+        if name and name != 'lo':
+            interfaces.append(name)
+    return interfaces
+
+
+def _detect_active_network_interfaces():
+    interfaces = []
+    try:
+        result = subprocess.run(
+            ['ip', '-o', 'link', 'show', 'up'],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            interfaces = _parse_ip_link_output(result.stdout)
+    except Exception:
+        interfaces = []
+
+    if not interfaces:
+        try:
+            net_dir = Path('/sys/class/net')
+            interfaces = [p.name for p in net_dir.iterdir() if p.is_dir() and p.name != 'lo']
+        except Exception:
+            interfaces = []
+
+    return interfaces
+
+
+def _normalize_interface_list(value):
+    return [iface.strip() for iface in value.split(',') if iface.strip()]
+
+
+def _load_project_env():
+    env_path = Path(settings.PROJECT_ROOT) / '.env'
+    values = {}
+    if not env_path.exists():
+        return values
+
+    for raw_line in env_path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+def _save_project_env(updates):
+    env_path = Path(settings.PROJECT_ROOT) / '.env'
+    if not env_path.exists():
+        env_path.write_text('', encoding='utf-8')
+
+    existing_lines = env_path.read_text(encoding='utf-8').splitlines()
+    seen = set()
+    output_lines = []
+    for raw_line in existing_lines:
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith('#') or '=' not in raw_line:
+            output_lines.append(raw_line)
+            continue
+        key, _ = raw_line.split('=', 1)
+        key = key.strip()
+        if key in updates:
+            output_lines.append(f"{key}={updates[key]}")
+            seen.add(key)
+        else:
+            output_lines.append(raw_line)
+    for key, value in updates.items():
+        if key not in seen:
+            output_lines.append(f"{key}={value}")
+    env_path.write_text('\n'.join(output_lines) + '\n', encoding='utf-8')
 
 
 def _severity_badge(value):
@@ -434,6 +517,22 @@ def _build_benign_group_key(alerta, osint_context_data):
     )
 
 
+def _build_critical_group_key(alerta, osint_context_data):
+    affected_asset = _normalize_text(osint_context_data.get("destination_name"))
+    affected_ip = _normalize_text(alerta.ip_destino)
+    source_ip = _normalize_text(alerta.ip_origen)
+    destination_ip = _normalize_text(alerta.ip_destino)
+    threat_type = _normalize_text(_clean_dns_signature(alerta.firma))
+
+    return (
+        affected_asset or "sin-activo",
+        affected_ip or "sin-ip",
+        source_ip or "sin-origen",
+        destination_ip or "sin-destino",
+        threat_type or "sin-amenaza",
+    )
+
+
 def _is_benign_group_candidate(alerta, osint_context_data):
     prioridad = alerta.prioridad_ia or 0
     severidad = alerta.severidad if alerta.severidad is not None else 3
@@ -597,6 +696,80 @@ def _build_osint_context(alerta, endpoint_index=None):
     }
 
 
+def _build_osint_engine_results(alerta):
+    vt_data_available = any(
+        value is not None
+        for value in [alerta.vt_malicious, alerta.vt_suspicious, alerta.vt_reputation]
+    )
+    abuse_data_available = any(
+        value is not None
+        for value in [alerta.abuse_confidence, alerta.abuse_reports]
+    )
+    greynoise_data_available = any(
+        value is not None
+        for value in [alerta.gn_noise, alerta.gn_riot]
+    ) or bool((alerta.gn_classification or "").strip())
+    otx_data_available = alerta.otx_pulse_count is not None or bool((alerta.otx_tags or "").strip()) or bool((alerta.otx_malware_families or "").strip())
+
+    vt_summary = "Sin datos consultados"
+    if vt_data_available:
+        vt_summary = (
+            f"Maliciosos: {alerta.vt_malicious or 0} · "
+            f"Sospechosos: {alerta.vt_suspicious or 0} · "
+            f"Reputacion: {alerta.vt_reputation if alerta.vt_reputation is not None else 'N/D'}"
+        )
+
+    abuse_summary = "Sin datos consultados"
+    if abuse_data_available:
+        abuse_summary = (
+            f"Confianza de abuso: {alerta.abuse_confidence if alerta.abuse_confidence is not None else 0}% · "
+            f"Reportes: {alerta.abuse_reports if alerta.abuse_reports is not None else 0}"
+        )
+
+    greynoise_summary = "Sin datos consultados"
+    if greynoise_data_available:
+        greynoise_summary = (
+            f"Noise: {'Si' if alerta.gn_noise else 'No'} · "
+            f"RIOT: {'Si' if alerta.gn_riot else 'No'} · "
+            f"Clasificacion: {(alerta.gn_classification or 'N/D')}"
+        )
+
+    otx_summary = "Sin datos consultados"
+    if otx_data_available:
+        otx_summary = (
+            f"Pulsos: {alerta.otx_pulse_count if alerta.otx_pulse_count is not None else 0} · "
+            f"Tags: {(alerta.otx_tags or 'Sin tags')} · "
+            f"Familias: {(alerta.otx_malware_families or 'Sin familias')}"
+        )
+
+    return [
+        {
+            "name": "VirusTotal",
+            "summary": vt_summary,
+            "has_signal": bool((alerta.vt_malicious or 0) > 0 or (alerta.vt_suspicious or 0) > 0),
+            "available": vt_data_available,
+        },
+        {
+            "name": "AbuseIPDB",
+            "summary": abuse_summary,
+            "has_signal": bool((alerta.abuse_confidence or 0) > 0 or (alerta.abuse_reports or 0) > 0),
+            "available": abuse_data_available,
+        },
+        {
+            "name": "GreyNoise",
+            "summary": greynoise_summary,
+            "has_signal": bool(alerta.gn_noise or (alerta.gn_classification or "").strip()),
+            "available": greynoise_data_available,
+        },
+        {
+            "name": "AlienVault OTX",
+            "summary": otx_summary,
+            "has_signal": bool((alerta.otx_pulse_count or 0) > 0 or (alerta.otx_tags or "").strip() or (alerta.otx_malware_families or "").strip()),
+            "available": otx_data_available,
+        },
+    ]
+
+
 def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None):
     fecha_local = _safe_localtime(alerta.fecha)
     severity = _severity_badge(alerta.severidad)
@@ -622,6 +795,7 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None)
     ml_metrics["test_rows"] = model_metrics["test_rows"]
     ml_metrics["dataset_rows"] = model_metrics["dataset_rows"]
     osint_context_data = _build_osint_context(alerta, endpoint_index=endpoint_index)
+    osint_engines = _build_osint_engine_results(alerta)
 
     if not can_view_sensitive:
         explanation = "Detalle restringido para este rol. Revisa con un analista o un administrador."
@@ -660,6 +834,8 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None)
         "destination_label": osint_context_data["destination_label"] if can_view_sensitive else osint_context_data["destination_name"],
         "source_name": osint_context_data["source_name"],
         "destination_name": osint_context_data["destination_name"],
+        "activo_afectado": osint_context_data["destination_name"] or osint_context_data["destination_label"] or "No identificado",
+        "tipo_amenaza": _clean_dns_signature(alerta.firma),
         "firma": _clean_dns_signature(alerta.firma),
         "severidad": alerta.severidad,
         "severity_badge": severity,
@@ -673,11 +849,20 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None)
         "indicadores_malware": _parse_indicator_list(alerta.indicadores_malware),
         "indicadores_malware_texto": alerta.indicadores_malware or "",
         "vt_malicious": alerta.vt_malicious,
+        "vt_suspicious": alerta.vt_suspicious,
+        "vt_reputation": alerta.vt_reputation,
         "abuse_confidence": alerta.abuse_confidence,
+        "abuse_reports": alerta.abuse_reports,
+        "gn_noise": alerta.gn_noise,
+        "gn_riot": alerta.gn_riot,
+        "gn_classification": alerta.gn_classification,
         "otx_pulse_count": alerta.otx_pulse_count,
+        "otx_tags": alerta.otx_tags,
+        "otx_malware_families": alerta.otx_malware_families,
         "ml_metrics": ml_metrics,
         "osint_context": osint_context_data["summary"],
         "osint_context_data": osint_context_data,
+        "osint_engines": osint_engines,
         "explicacion_raw": alerta.explicacion,
         "service_detected": osint_context_data["service_detected"],
         "primary_domain": osint_context_data["primary_domain"],
@@ -693,6 +878,88 @@ def _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=None)
         "repeticiones": repeticiones,
         "es_agrupada": repeticiones > 1,
     }
+
+
+def _build_alert_group_cards(alertas, can_view_sensitive, endpoint_index):
+    grouped_alerts = {}
+
+    for alerta in alertas:
+        osint_context_data = _build_osint_context(alerta, endpoint_index=endpoint_index)
+        key = _build_critical_group_key(alerta, osint_context_data)
+        group = grouped_alerts.setdefault(
+            key,
+            {
+                "items": [],
+                "latest_alert": alerta,
+                "latest_date": alerta.fecha or timezone.now(),
+                "highest_score": alerta.prioridad_ia or 0,
+            },
+        )
+        group["items"].append(alerta)
+
+        alert_date = alerta.fecha or timezone.now()
+        alert_score = alerta.prioridad_ia or 0
+        latest_date = group["latest_date"]
+        highest_score = group["highest_score"]
+        latest_alert = group["latest_alert"]
+
+        if (
+            alert_date > latest_date
+            or (alert_date == latest_date and alert_score >= highest_score)
+            or (latest_alert.prioridad_ia or 0) < alert_score
+        ):
+            group["latest_alert"] = alerta
+            group["latest_date"] = alert_date
+            group["highest_score"] = alert_score
+
+    ordered_groups = sorted(
+        grouped_alerts.values(),
+        key=lambda group: (
+            group["highest_score"],
+            group["latest_date"],
+        ),
+        reverse=True,
+    )
+
+    group_cards = []
+    for group in ordered_groups:
+        sorted_items = sorted(
+            group["items"],
+            key=lambda item: (
+                item.fecha or timezone.now(),
+                item.id,
+            ),
+            reverse=True,
+        )
+
+        representative = group["latest_alert"]
+        representative._repeticiones = len(sorted_items)
+        card = _format_alert_for_dashboard(
+            representative,
+            can_view_sensitive,
+            endpoint_index=endpoint_index,
+        )
+
+        card["alertas_relacionadas"] = [
+            _format_alert_for_dashboard(
+                item,
+                can_view_sensitive,
+                endpoint_index=endpoint_index,
+            )
+            for item in sorted_items
+        ]
+        card["total_alertas_relacionadas"] = len(sorted_items)
+        card["es_grupo"] = len(sorted_items) >= 2
+
+        first_date = sorted_items[-1].fecha if sorted_items else None
+        last_date = sorted_items[0].fecha if sorted_items else None
+        first_local = _safe_localtime(first_date)
+        last_local = _safe_localtime(last_date)
+        card["primera_ocurrencia_display"] = first_local.strftime("%d %b %Y %H:%M:%S") if hasattr(first_local, "strftime") else "Sin fecha"
+        card["ultima_ocurrencia_display"] = last_local.strftime("%d %b %Y %H:%M:%S") if hasattr(last_local, "strftime") else "Sin fecha"
+        group_cards.append(card)
+
+    return group_cards
 
 
 def _build_dashboard_context(request, current_section="overview"):
@@ -733,18 +1000,51 @@ def _build_dashboard_context(request, current_section="overview"):
     
     # Ordenar críticas: por score IA (tratando None como 0) y fecha
     alertas_criticas.sort(key=lambda x: (x.prioridad_ia or 0, x.fecha or timezone.now()), reverse=True)
-    alertas_deduplicadas = alertas_criticas[:50]
-    
-    # Ordenar benignas por fecha
-    benignas_agrupadas = sorted(vistas_benignas.values(), key=lambda x: x["alerta"].fecha or timezone.now(), reverse=True)
-    for item in benignas_agrupadas[:15]: 
-        item["alerta"]._repeticiones = item["contador"]
-        alertas_deduplicadas.append(item["alerta"])
-    
-    alert_cards = [
-        _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=endpoint_index)
-        for alerta in alertas_deduplicadas
-    ]
+
+    if current_section == "alertas":
+        alert_cards = _build_alert_group_cards(
+            alertas_criticas[:120],
+            can_view_sensitive,
+            endpoint_index,
+        )
+
+        benignas_agrupadas = sorted(
+            vistas_benignas.values(),
+            key=lambda x: x["alerta"].fecha or timezone.now(),
+            reverse=True,
+        )
+        for item in benignas_agrupadas[:30]:
+            item["alerta"]._repeticiones = item["contador"]
+            card = _format_alert_for_dashboard(
+                item["alerta"],
+                can_view_sensitive,
+                endpoint_index=endpoint_index,
+            )
+            card["es_grupo"] = False
+            card["es_benigna"] = True
+            alert_cards.append(card)
+
+        alert_cards.sort(
+            key=lambda card: (
+                card.get("prioridad_ia", 0),
+                card.get("fecha") or timezone.now(),
+                card.get("id", 0),
+            ),
+            reverse=True,
+        )
+    else:
+        alertas_deduplicadas = alertas_criticas[:50]
+
+        # Ordenar benignas por fecha
+        benignas_agrupadas = sorted(vistas_benignas.values(), key=lambda x: x["alerta"].fecha or timezone.now(), reverse=True)
+        for item in benignas_agrupadas[:15]:
+            item["alerta"]._repeticiones = item["contador"]
+            alertas_deduplicadas.append(item["alerta"])
+
+        alert_cards = [
+            _format_alert_for_dashboard(alerta, can_view_sensitive, endpoint_index=endpoint_index)
+            for alerta in alertas_deduplicadas
+        ]
 
     # Contadores reales
     resumen = base_queryset.aggregate(total=Count("id"), promedio=Avg("prioridad_ia"))
@@ -763,6 +1063,7 @@ def _build_dashboard_context(request, current_section="overview"):
         "can_view_sensitive_data": can_view_sensitive,
         "total_alertas_criticas": base_queryset.filter(prioridad_ia__gte=70).count(),
         "ultima_alerta_critica": alert_cards[0] if alert_cards else None,
+        "latest_alert_id": base_queryset.order_by("-id").values_list("id", flat=True).first() or 0,
         "criticidad_activos_alta": Activo.objects.filter(criticidad__gte=4).count(),
         "current_section": current_section,
         "enabled_monitored_ips": enabled_monitored_ips,
@@ -961,9 +1262,83 @@ def dashboard_osint(request):
 @never_cache
 def dashboard_redes(request):
     context = _build_dashboard_context(request, "redes")
+    env_values = _load_project_env()
+    monitored_ips = env_values.get("MONITORED_IPS", "")
+    monitored_networks = env_values.get("MONITORED_NETWORKS", "")
+    api_keys = {
+        "VT_API_KEY": env_values.get("VT_API_KEY", ""),
+        "ABUSEIPDB_API_KEY": env_values.get("ABUSEIPDB_API_KEY", ""),
+        "GREYNOISE_API_KEY": env_values.get("GREYNOISE_API_KEY", ""),
+        "OTX_API_KEY": env_values.get("OTX_API_KEY", ""),
+    }
+    api_status = {
+        "VirusTotal": bool(api_keys["VT_API_KEY"]),
+        "AbuseIPDB": bool(api_keys["ABUSEIPDB_API_KEY"]),
+        "GreyNoise": bool(api_keys["GREYNOISE_API_KEY"]),
+        "OTX": bool(api_keys["OTX_API_KEY"]),
+    }
+    
+    # Parámetros de filtrado de tráfico
+    show_all_traffic = request.GET.get('show_all_traffic', 'false').lower() == 'true'
+    quick_filter_ip = (request.GET.get('quick_filter_ip') or '').strip()
+
+    # Obtener alertas filtradas según el modo
+    queryset = Alerta.objects.all()
+    if quick_filter_ip:
+        queryset = queryset.filter(Q(ip_origen=quick_filter_ip) | Q(ip_destino=quick_filter_ip))
+    elif not show_all_traffic:
+        # Filtrar solo por IPs monitoreadas configuradas
+        monitored_ips_list = [ip.strip() for ip in monitored_ips.split(',') if ip.strip()]
+        monitored_networks_list = [net.strip() for net in monitored_networks.split(',') if net.strip()]
+        
+        query = Q()
+        for ip in monitored_ips_list:
+            query |= Q(ip_origen=ip) | Q(ip_destino=ip)
+        queryset = queryset.filter(query) if monitored_ips_list else Alerta.objects.none()
+    
+    alertas_trafico = queryset.order_by('-fecha')[:20]
+
+    if request.method == "POST":
+        if not is_admin_user(request.user):
+            messages.error(request, "No tienes permisos para modificar esta configuración.")
+            return redirect("dashboard_redes")
+
+        action = request.POST.get("action", "")
+        updates = {}
+        if action == "network_filters":
+            updates["MONITORED_IPS"] = request.POST.get("MONITORED_IPS", "").strip()
+            updates["MONITORED_NETWORKS"] = request.POST.get("MONITORED_NETWORKS", "").strip()
+        elif action == "osint_keys":
+            updates["VT_API_KEY"] = request.POST.get("VT_API_KEY", "").strip()
+            updates["ABUSEIPDB_API_KEY"] = request.POST.get("ABUSEIPDB_API_KEY", "").strip()
+            updates["GREYNOISE_API_KEY"] = request.POST.get("GREYNOISE_API_KEY", "").strip()
+            updates["OTX_API_KEY"] = request.POST.get("OTX_API_KEY", "").strip()
+        else:
+            messages.error(request, "Acción de formulario desconocida.")
+            return redirect("dashboard_redes")
+
+        try:
+            _save_project_env(updates)
+            for key, value in updates.items():
+                if value:
+                    os.environ[key] = value
+                elif key in os.environ:
+                    del os.environ[key]
+            messages.success(request, "Configuración guardada correctamente. Reinicia los servicios si es necesario.")
+        except Exception as e:
+            messages.error(request, f"No se pudo guardar la configuración: {str(e)}")
+        return redirect("dashboard_redes")
+
     context.update(
         {
             "monitored_endpoints": MonitoredEndpoint.objects.all(),
+            "monitored_ips": monitored_ips,
+            "monitored_networks": monitored_networks,
+            "api_keys": api_keys,
+            "api_status": api_status,
+            "alertas_trafico": alertas_trafico,
+            "show_all_traffic": show_all_traffic,
+            "quick_filter_ip": quick_filter_ip,
         }
     )
     return render(request, "monitoreo/redes.html", context)
@@ -1119,6 +1494,57 @@ def check_notificaciones(request):
     ultima_alerta = Alerta.objects.order_by('-id').first()
     
     if ultima_alerta:
+        return JsonResponse({
+            'id': ultima_alerta.id,
+            'firma': ultima_alerta.firma,
+            'score': ultima_alerta.prioridad_ia or 0,
+            'ip_origen': ultima_alerta.ip_origen,
+            'recomendacion': ultima_alerta.recomendacion,
+        })
+    return JsonResponse({'id': None})
+
+
+@two_factor_required
+@require_soc_access
+@never_cache
+@require_GET
+def check_alerts_redes_filtradas(request):
+    """Endpoint para obtener alertas filtradas según criterios de la sección Redes."""
+    show_all = request.GET.get('show_all', 'false').lower() == 'true'
+    quick_filter_ip = (request.GET.get('quick_filter_ip') or '').strip()
+    
+    queryset = Alerta.objects.all()
+    
+    if quick_filter_ip:
+        # Filtrar por IP específica (origen o destino)
+        queryset = queryset.filter(Q(ip_origen=quick_filter_ip) | Q(ip_destino=quick_filter_ip))
+    elif not show_all:
+        # Usar IPs monitoreadas configuradas
+        env_values = _load_project_env()
+        monitored_ips = env_values.get('MONITORED_IPS', '').split(',')
+        monitored_ips = [ip.strip() for ip in monitored_ips if ip.strip()]
+        
+        monitored_networks = env_values.get('MONITORED_NETWORKS', '').split(',')
+        monitored_networks = [net.strip() for net in monitored_networks if net.strip()]
+        
+        query = Q()
+        for ip in monitored_ips:
+            query |= Q(ip_origen=ip) | Q(ip_destino=ip)
+        
+        for net in monitored_networks:
+            try:
+                network = ipaddress.ip_network(net, strict=False)
+                query |= Q(ip_origen__regex=r'^\d+\.\d+\.\d+\.\d+$') | Q(ip_destino__regex=r'^\d+\.\d+\.\d+\.\d+$')
+            except ValueError:
+                pass
+        
+        queryset = queryset.filter(query) if query else Alerta.objects.none()
+    
+    # Obtener las 5 alertas más recientes filtradas
+    alertas_recientes = queryset.order_by('-id')[:5]
+    
+    if alertas_recientes:
+        ultima_alerta = alertas_recientes[0]
         return JsonResponse({
             'id': ultima_alerta.id,
             'firma': ultima_alerta.firma,
@@ -1605,7 +2031,11 @@ def dashboard_suricata_config(request):
     config, created = SuricataConfig.objects.get_or_create(
         defaults={'interfaces': 'eth0', 'is_active': True}
     )
-    
+    available_interfaces = _detect_active_network_interfaces()
+    configured_interfaces = _normalize_interface_list(config.interfaces or '')
+    valid_interfaces = [iface for iface in configured_interfaces if iface in available_interfaces]
+    suggested_interfaces = ','.join(valid_interfaces or available_interfaces)
+
     if request.method == "POST":
         action = request.POST.get('action', 'save')
         
@@ -1652,5 +2082,8 @@ def dashboard_suricata_config(request):
     context = _build_dashboard_context(request, "suricata_config")
     context.update({
         'config': config,
+        'available_interfaces': available_interfaces,
+        'suggested_interfaces': suggested_interfaces,
+        'config_is_default': not valid_interfaces and bool(available_interfaces),
     })
     return render(request, "monitoreo/suricata_config.html", context)

@@ -19,6 +19,99 @@
     gap: 12px;
   }
 
+  .alert-group {
+    border: 1px solid rgba(74, 143, 255, 0.25);
+    background: linear-gradient(180deg, rgba(74, 143, 255, 0.06), rgba(12, 17, 24, 0.92));
+  }
+
+  .alert-group summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .alert-group summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .group-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .group-chevron {
+    font-size: 14px;
+    transition: transform 0.2s ease;
+  }
+
+  .alert-group[open] .group-chevron {
+    transform: rotate(90deg);
+  }
+
+  .group-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .group-meta-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 10px 12px;
+  }
+
+  .group-meta-label {
+    font-size: 11px;
+    color: var(--muted2);
+    margin-bottom: 4px;
+  }
+
+  .group-meta-value {
+    font-size: 12px;
+    font-weight: 600;
+    word-break: break-word;
+  }
+
+  .group-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .group-item-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--r2);
+    padding: 14px;
+  }
+
+  .group-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .group-item-title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .group-item-time {
+    font-size: 11px;
+    color: var(--muted2);
+    font-family: var(--mono);
+  }
+
   .alert-header {
     display: flex;
     align-items: flex-start;
@@ -30,6 +123,14 @@
     font-weight: 700;
     min-width: 68px;
     line-height: 1;
+  }
+
+  .alert-score-help {
+    font-size: 10px;
+    color: var(--muted2);
+    margin-top: 6px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
   .alert-meta {
@@ -146,6 +247,11 @@
     color: var(--low);
   }
 
+  .badge-small.bn {
+    background: rgba(61, 184, 130, 0.15);
+    color: var(--low);
+  }
+
   .alert-list {
     list-style: none;
     margin: 0;
@@ -198,7 +304,7 @@
     onsubmit="return confirm('¿Estás seguro de que quieres borrar TODAS las alertas? Esta acción limpiará la base de datos para tu nueva prueba.');">
     {% csrf_token %}
     <button type="submit" class="btn-clear">
-      <span style="font-size: 16px;">🗑️</span> Borrar historial de alertas
+      Borrar historial de alertas
     </button>
   </form>
 </div>
@@ -206,16 +312,26 @@
 <div class="alert-details">
   <ol class="alert-list">
     {% for alerta in alertas_criticas_recientes %}
-    <li class="alert-card" style="margin-bottom: 12px;">
+    <li class="alert-card {% if alerta.es_grupo %}alert-group{% endif %}" style="margin-bottom: 12px;">
+      {% if alerta.es_grupo %}
+      <details>
+        <summary>
+      {% endif %}
       <div class="alert-header">
         <div class="alert-score"
           style="color: {% if alerta.prioridad_ia >= 95 %}var(--critical){% elif alerta.prioridad_ia >= 85 %}var(--high){% elif alerta.prioridad_ia >= 70 %}var(--medium){% else %}var(--low){% endif %}">
           {{ alerta.prioridad_ia|floatformat:0 }}
+          <div class="alert-score-help">{{ alerta.priority_badge.label }} · prioridad IA</div>
         </div>
         <div class="alert-main">
           <div class="alert-index">
             Alerta {{ forloop.counter }}
-            {% if alerta.es_agrupada %}
+            {% if alerta.es_grupo %}
+            <span
+              style="background: var(--accent2); color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">
+              {{ alerta.total_alertas_relacionadas }} alertas agrupadas
+            </span>
+            {% elif alerta.es_agrupada %}
             <span
               style="background: var(--accent2); color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">
               ↻ {{ alerta.repeticiones }} repeticiones agrupadas
@@ -223,11 +339,19 @@
             {% endif %}
           </div>
 
+          {% if alerta.es_grupo %}
+          <div class="group-summary">
+            <span class="group-chevron">▶</span>
+            <span>Ver {{ alerta.total_alertas_relacionadas }} ocurrencias del mismo evento</span>
+          </div>
+          {% endif %}
+
           <div class="alert-firma">
-            {{ alerta.servicio_detectado|default:alerta.service_detected|default:"Servicio desconocido" }}
-            {% if alerta.servicio_detectado == "No identificado" or alerta.service_detected == "No identificado" %}
-              <span style="font-size: 0.9em; color: var(--muted);">• {{ alerta.firma }}</span>
-            {% endif %}
+            {{ alerta.tipo_amenaza|default:"Amenaza no identificada" }}
+          </div>
+
+          <div class="alert-domain">
+            Activo afectado: {{ alerta.activo_afectado|default:"No identificado" }}
           </div>
 
           <div class="alert-domain">
@@ -238,7 +362,7 @@
             Origen resuelto: {{ alerta.origen_resuelto|default:alerta.source_label|default:"No identificado" }}
           </div>
 
-          <div class="alert-domain">
+          <div class="alert-type">
             Destino resuelto: {{ alerta.destino_resuelto|default:alerta.destination_label|default:"No identificado" }}
           </div>
 
@@ -260,7 +384,11 @@
           <div class="alert-meta">
             <div class="alert-meta-item"><strong>{{ alerta.fecha_display }}</strong></div>
             <div class="alert-meta-item" style="font-family: var(--mono);">{{ alerta.hora_display }}</div>
-            {% if alerta.es_agrupada %}
+            {% if alerta.es_grupo %}
+            <div class="alert-meta-item" style="color: var(--medium); font-style: italic;">
+              Última ocurrencia del grupo. Abre el desplegable para revisar cada alerta individual.
+            </div>
+            {% elif alerta.es_agrupada %}
             <div class="alert-meta-item" style="color: var(--medium); font-style: italic;">
               Última ocurrencia mostrada. Se suprimieron {{ alerta.repeticiones|add:"-1" }} eventos duplicados del mismo
               dominio.
@@ -275,6 +403,11 @@
           class="badge-small {% if alerta.severity_badge.tone == 'critical' %}bc{% elif alerta.severity_badge.tone == 'high' %}bh{% elif alerta.severity_badge.tone == 'medium' %}bm{% else %}bl{% endif %}">
           {{ alerta.severity_badge.label }}
         </span>
+        {% if alerta.es_benigna %}
+        <span class="badge-small bn">
+          Benigna agrupada
+        </span>
+        {% endif %}
         <span class="badge-small" style="background: var(--accent2); color: white;">
           IA:
           {% if alerta.prioridad_ia >= 80 %}
@@ -321,11 +454,67 @@
         <strong>Recomendación:</strong><br>
         {{ alerta.recomendacion_display|truncatechars:200 }}
       </div>
+
+      {% if alerta.es_grupo %}
+      <div class="group-meta">
+        <div class="group-meta-card">
+          <div class="group-meta-label">IP afectada</div>
+          <div class="group-meta-value">{{ alerta.ip_destino_display }}</div>
+        </div>
+        <div class="group-meta-card">
+          <div class="group-meta-label">IP origen</div>
+          <div class="group-meta-value">{{ alerta.ip_origen_display }}</div>
+        </div>
+        <div class="group-meta-card">
+          <div class="group-meta-label">Primera ocurrencia</div>
+          <div class="group-meta-value">{{ alerta.primera_ocurrencia_display }}</div>
+        </div>
+        <div class="group-meta-card">
+          <div class="group-meta-label">Ultima ocurrencia</div>
+          <div class="group-meta-value">{{ alerta.ultima_ocurrencia_display }}</div>
+        </div>
+      </div>
+        </summary>
+
+        <div class="group-items">
+          {% for relacionada in alerta.alertas_relacionadas %}
+          <div class="group-item-card">
+            <div class="group-item-top">
+              <div class="group-item-title">Alerta #{{ relacionada.id }} · {{ relacionada.tipo_amenaza|default:"Amenaza no identificada" }}</div>
+              <div class="group-item-time">{{ relacionada.fecha_display }} {{ relacionada.hora_display }}</div>
+            </div>
+
+            <div class="badge-row">
+              <span
+                class="badge-small {% if relacionada.severity_badge.tone == 'critical' %}bc{% elif relacionada.severity_badge.tone == 'high' %}bh{% elif relacionada.severity_badge.tone == 'medium' %}bm{% else %}bl{% endif %}">
+                {{ relacionada.severity_badge.label }}
+              </span>
+              <span class="badge-small" style="background: var(--accent2); color: white;">{{ relacionada.prioridad_ia|floatformat:0 }} pts</span>
+            </div>
+
+            <div class="alert-metrics">
+              <div class="metric">
+                <span class="metric-label">Origen:</span>
+                <span class="metric-value">{{ relacionada.ip_origen_display }}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Destino:</span>
+                <span class="metric-value">{{ relacionada.ip_destino_display }}</span>
+              </div>
+            </div>
+
+            <div class="alert-osint">
+              {{ relacionada.explicacion_display|truncatechars:220 }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
     </li>
     {% empty %}
     <li
       style="text-align: center; padding: 60px; color: var(--muted); list-style: none; background: var(--bg2); border-radius: var(--r); border: 1px dashed var(--border);">
-      <div style="font-size: 48px; margin-bottom: 15px;">✨</div>
       <div style="font-size: 16px; font-weight: 500;">No hay alertas pendientes</div>
       <div style="font-size: 13px; color: var(--muted2); margin-top: 8px;">El historial ha sido limpiado. Listo para
         nuevas pruebas.</div>
@@ -336,25 +525,48 @@
 
 <script>
   // Guardamos el ID de la última alerta que estamos viendo actualmente
-  let lastSeenAlertId = {% if alertas_criticas_recientes %}{{ alertas_criticas_recientes.0.id }}{% else %}0{% endif %};
+  let lastSeenAlertId = {{ latest_alert_id|default:0 }};
+  let pendingReload = false;
+
+  function hayGruposAbiertos() {
+    return document.querySelector('details[open]') !== null;
+  }
+
+  function aplicarRecargaPendienteSiCorresponde() {
+    if (pendingReload && !hayGruposAbiertos()) {
+      location.reload();
+    }
+  }
+
+  document.addEventListener('toggle', (event) => {
+    if (event.target.tagName === 'DETAILS') {
+      aplicarRecargaPendienteSiCorresponde();
+    }
+  }, true);
 
   function verificarNuevasAlertas() {
+    if (document.hidden) {
+      return;
+    }
     // Consultamos al endpoint ligero que creamos en views.py
     fetch('{% url "check_alerts" %}')
       .then(response => response.json())
       .then(data => {
         // Si el servidor nos devuelve un ID de alerta que NO tenemos...
         if (data.id && data.id > lastSeenAlertId) {
-          console.log("¡Nueva alerta detectada! Recargando...");
-          location.reload(); // Recarga la página instantáneamente
+          lastSeenAlertId = data.id;
+          if (hayGruposAbiertos()) {
+            pendingReload = true;
+            return;
+          }
+          location.reload();
         }
       })
       .catch(error => console.error('Error verificando alertas:', error));
   }
 
-  // Ejecutar la verificación cada 1500 milisegundos (1.5 segundos)
-  // Es lo suficientemente rápido para parecer instantáneo, pero no satura la base de datos.
-  setInterval(verificarNuevasAlertas, 1500);
+  // Solo recarga cuando de verdad aparece una alerta nueva.
+  setInterval(verificarNuevasAlertas, 5000);
 </script>
 
 {% endblock %}

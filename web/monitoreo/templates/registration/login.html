@@ -88,7 +88,7 @@ body::after{
 
 <div class="page">
   <div class="brand">
-    <div class="brand-icon">🤖</div>
+    <div class="brand-icon">AI</div>
     <div>
       <div class="brand-name">Agente IA</div>
       <div class="brand-sub">Apoyo al analista</div>
@@ -100,15 +100,15 @@ body::after{
     <div class="card-sub">Acceso restringido a la herramienta que reduce fatiga por alertas.</div>
 
     {% if auth_error %}
-    <div class="alert-err">⚠️ <span>{{ auth_error }}</span></div>
+    <div class="alert-err"><span>{{ auth_error }}</span></div>
     {% elif form.non_field_errors %}
-    <div class="alert-err">⚠️ <span>{% for error in form.non_field_errors %}{{ error }}{% endfor %}</span></div>
+    <div class="alert-err"><span>{% for error in form.non_field_errors %}{{ error }}{% endfor %}</span></div>
     {% elif form.errors %}
-    <div class="alert-err">⚠️ <span>Se ingresaron credenciales incorrectas para esta cuenta.</span></div>
+    <div class="alert-err"><span>Se ingresaron credenciales incorrectas para esta cuenta.</span></div>
     {% endif %}
 
     {% if next and user.is_authenticated %}
-    <div class="alert-err">⚠️ <span>Tu usuario no tiene acceso a esta vista.</span></div>
+    <div class="alert-err"><span>Tu usuario no tiene acceso a esta vista.</span></div>
     {% endif %}
 
     <form method="post">
@@ -117,7 +117,7 @@ body::after{
       <div class="field">
         <label>Usuario</label>
         <div class="field-wrap">
-          <span class="field-icon">👤</span>
+          <span class="field-icon">ID</span>
           <input type="text" name="username" id="id_username" placeholder="nombre de usuario" autocomplete="username" autofocus required>
         </div>
       </div>
@@ -125,7 +125,7 @@ body::after{
       <div class="field">
         <label>Contrasena</label>
         <div class="field-wrap">
-          <span class="field-icon">🔒</span>
+          <span class="field-icon">PW</span>
           <input type="password" name="password" id="id_password" placeholder="••••••••••" autocomplete="current-password" required>
         </div>
       </div>
@@ -136,7 +136,6 @@ body::after{
     <a href="{% url 'password_help' %}" class="forgot">Recuperar o cambiar contrasena</a>
 
     <div class="sec-note">
-      <span>🛡️</span>
       <span>Esta sesion usa 2FA, control por roles y registro de accesos para proteger la informacion del analista.</span>
     </div>
   </div>

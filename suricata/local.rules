@@ -1,0 +1,8 @@
+# Reglas locales de Suricata
+# Añade aquí tus reglas personalizadas para el tráfico específico que deseas monitorear.
+
+# Ejemplo de regla para tráfico HTTP a un host específico
+# alert http any any -> any any (msg:"Tráfico HTTP personalizado detectado"; sid:1000001; rev:1;)
+
+# Ejemplo de regla para tráfico DNS sospechoso
+# alert dns any any -> any any (msg:"Consulta DNS sospechosa"; sid:1000002; rev:1;)

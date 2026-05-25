@@ -14,6 +14,9 @@ env_path = Path(__file__).parent / ".env"
 if not env_path.exists():
     env_path = Path.cwd() / ".env"
 
+if not env_path.exists():
+    env_path = Path(__file__).parent / ".env.example"
+
 load_dotenv(dotenv_path=env_path)
 
 # ──────────────────────────────────────────────

@@ -16,6 +16,7 @@ urlpatterns = [
     path('redes/verificar/<int:endpoint_id>/', views.verificar_endpoint_monitoreado, name='verificar_endpoint_monitoreado'),
     path('redes/eliminar/<int:endpoint_id>/', views.eliminar_endpoint_monitoreado, name='eliminar_endpoint_monitoreado'),
     path('check-alerts/', views.check_notificaciones, name='check_alerts'), # NUEVA RUTA
+    path('check-alerts-redes/', views.check_alerts_redes_filtradas, name='check_alerts_redes'), # FILTRADAS PARA REDES
     path('2fa/setup/', views.two_factor_setup, name='two_factor_setup'),
     path('2fa/verify/', views.two_factor_verify, name='two_factor_verify'),
     path('2fa/reset/', views.two_factor_reset, name='two_factor_reset'),

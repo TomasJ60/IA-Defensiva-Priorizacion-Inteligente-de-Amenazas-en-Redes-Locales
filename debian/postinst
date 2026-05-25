@@ -1,0 +1,131 @@
+#!/bin/sh
+set -e
+
+PROJECT_DIR="/opt/agente-ia"
+ENV_FILE="$PROJECT_DIR/.env"
+EXAMPLE_FILE="$PROJECT_DIR/.env.example"
+VENV_DIR="$PROJECT_DIR/.venv"
+SERVICE_NAME="agente-ia"
+WEB_SERVICE="agente-ia-web"
+AGENT_SERVICE="agente-ia-agent"
+IA_SERVICE="agente-ia-ia"
+
+parse_env() {
+  key="$1"
+  if [ -f "$ENV_FILE" ]; then
+    grep -E "^${key}=" "$ENV_FILE" | tail -n 1 | cut -d'=' -f2- | tr -d '"' | tr -d "'"
+  fi
+}
+
+if [ ! -f "$ENV_FILE" ] && [ -f "$EXAMPLE_FILE" ]; then
+  cp "$EXAMPLE_FILE" "$ENV_FILE"
+  chmod 640 "$ENV_FILE"
+fi
+
+if [ -f "$ENV_FILE" ]; then
+  chmod 640 "$ENV_FILE"
+fi
+
+if [ ! -d "$VENV_DIR" ]; then
+  python3 -m venv "$VENV_DIR"
+fi
+
+. "$VENV_DIR/bin/activate"
+"$VENV_DIR/bin/python" -m pip install --upgrade pip >/dev/null 2>&1 || true
+"$VENV_DIR/bin/python" -m pip install -r "$PROJECT_DIR/requirements.txt"
+
+if command -v psql >/dev/null 2>&1; then
+  systemctl enable --now postgresql >/dev/null 2>&1 || true
+  DB_NAME=$(parse_env DB_NAME)
+  DB_USER=$(parse_env DB_USER)
+  DB_PASSWORD=$(parse_env DB_PASSWORD)
+  DB_HOST=$(parse_env DB_HOST)
+  DB_PORT=$(parse_env DB_PORT)
+  ADMIN_USERNAME=$(parse_env ADMIN_USERNAME)
+  ADMIN_PASSWORD=$(parse_env ADMIN_PASSWORD)
+  ADMIN_EMAIL=$(parse_env ADMIN_EMAIL)
+
+  if [ -z "$DB_NAME" ]; then DB_NAME="agente_ia"; fi
+  if [ -z "$DB_USER" ]; then DB_USER="postgres"; fi
+  if [ -z "$DB_PASSWORD" ]; then DB_PASSWORD="admin123"; fi
+  if [ -z "$DB_HOST" ]; then DB_HOST="localhost"; fi
+  if [ -z "$DB_PORT" ]; then DB_PORT="5432"; fi
+  if [ -z "$ADMIN_USERNAME" ]; then ADMIN_USERNAME="admin"; fi
+  if [ -z "$ADMIN_PASSWORD" ]; then ADMIN_PASSWORD="admin123"; fi
+  if [ -z "$ADMIN_EMAIL" ]; then ADMIN_EMAIL="admin@example.com"; fi
+  export ADMIN_USERNAME ADMIN_PASSWORD ADMIN_EMAIL
+
+  su - postgres -c "psql -c \"CREATE USER \\\"$DB_USER\\\" WITH PASSWORD '$DB_PASSWORD';\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -c \"ALTER USER \\\"$DB_USER\\\" WITH PASSWORD '$DB_PASSWORD';\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -c \"CREATE DATABASE \\\"$DB_NAME\\\" OWNER \\\"$DB_USER\\\";\"" >/dev/null 2>&1 || true
+  # Ensure legacy table 'alertas' has expected columns (idempotent)
+  su - postgres -c "psql -d \"$DB_NAME\" -c \"ALTER TABLE alertas ADD COLUMN IF NOT EXISTS tipo_trafico varchar(32);\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -d \"$DB_NAME\" -c \"ALTER TABLE alertas ADD COLUMN IF NOT EXISTS payload_malicioso boolean;\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -d \"$DB_NAME\" -c \"ALTER TABLE alertas ADD COLUMN IF NOT EXISTS indicadores_malware text;\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -d \"$DB_NAME\" -c \"ALTER TABLE alertas ADD COLUMN IF NOT EXISTS detalles_payload text;\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -d \"$DB_NAME\" -c \"ALTER TABLE alertas ADD COLUMN IF NOT EXISTS fecha_analisis_ia timestamptz;\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -d \"$DB_NAME\" -c \"ALTER TABLE alertas ADD COLUMN IF NOT EXISTS prioridad_ia double precision;\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -d \"$DB_NAME\" -c \"ALTER TABLE alertas ADD COLUMN IF NOT EXISTS explicacion text;\"" >/dev/null 2>&1 || true
+  su - postgres -c "psql -d \"$DB_NAME\" -c \"ALTER TABLE alertas ADD COLUMN IF NOT EXISTS recomendacion text;\"" >/dev/null 2>&1 || true
+fi
+
+cd "$PROJECT_DIR"
+"$VENV_DIR/bin/python" web/manage.py migrate
+"$VENV_DIR/bin/python" web/manage.py shell <<'PY'
+import os
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+username = os.environ.get('ADMIN_USERNAME', 'admin')
+password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+email = os.environ.get('ADMIN_EMAIL', 'admin@example.com')
+
+if username and password:
+    if not User.objects.filter(username=username).exists():
+        User.objects.create_superuser(username=username, email=email, password=password)
+        print(f'Usuario administrador creado: {username}')
+    else:
+        print(f'Usuario administrador ya existe: {username}')
+PY
+
+RULES_PATH="/etc/suricata/rules"
+mkdir -p "$RULES_PATH"
+cp -f "$PROJECT_DIR/suricata/local.rules" "$RULES_PATH/local.rules"
+
+SURICATA_CONFIG="/etc/suricata/suricata.yaml"
+if [ -f "$SURICATA_CONFIG" ]; then
+  python3 - <<'PY'
+import pathlib
+path = pathlib.Path('/etc/suricata/suricata.yaml')
+text = path.read_text()
+lines = []
+added = False
+for line in text.splitlines():
+    if line.strip().startswith('default-rule-path:'):
+        line = 'default-rule-path: /etc/suricata/rules'
+    lines.append(line)
+    if line.strip() == 'rule-files:' and not added:
+        added = True
+        continue
+if 'rule-files:' in text and 'local.rules' not in text:
+    new_lines = []
+    inserted = False
+    for line in lines:
+        new_lines.append(line)
+        if line.strip() == 'rule-files:' and not inserted:
+            new_lines.append('  - local.rules')
+            inserted = True
+    text = '\n'.join(new_lines)
+elif 'rule-files:' not in text:
+    text += '\nrule-files:\n  - local.rules\n'
+path.write_text(text)
+PY
+  systemctl enable --now suricata >/dev/null 2>&1 || true
+fi
+
+systemctl daemon-reload >/dev/null 2>&1 || true
+systemctl enable --now "$WEB_SERVICE" >/dev/null 2>&1 || true
+systemctl enable --now "$AGENT_SERVICE" >/dev/null 2>&1 || true
+systemctl enable --now "$IA_SERVICE" >/dev/null 2>&1 || true
+
+exit 0

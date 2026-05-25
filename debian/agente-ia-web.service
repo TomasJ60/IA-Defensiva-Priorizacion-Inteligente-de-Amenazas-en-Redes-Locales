@@ -1,0 +1,17 @@
+[Unit]
+Description=Agente IA Web Dashboard
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/agente-ia
+Environment=PATH=/opt/agente-ia/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/agente-ia/.venv/bin/python /opt/agente-ia/web/manage.py runserver 0.0.0.0:8000
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

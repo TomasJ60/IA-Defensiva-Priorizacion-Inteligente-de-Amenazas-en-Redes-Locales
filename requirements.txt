@@ -3,6 +3,7 @@ psycopg2-binary
 pandas
 scikit-learn
 django
+tldextract
 qrcode
 pyyaml
 python-dotenv

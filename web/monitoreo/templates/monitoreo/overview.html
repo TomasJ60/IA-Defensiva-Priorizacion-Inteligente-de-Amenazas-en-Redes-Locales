@@ -46,6 +46,7 @@
       <span class="score-badge {% if ultima_alerta_critica.prioridad_ia >= 95 %}sc-crit{% elif ultima_alerta_critica.prioridad_ia >= 85 %}sc-high{% elif ultima_alerta_critica.prioridad_ia >= 70 %}sc-med{% else %}sc-low{% endif %}">
         {{ ultima_alerta_critica.prioridad_ia|floatformat:0 }} pts
       </span>
+      <span class="badge bi">Prioridad IA: {{ ultima_alerta_critica.priority_badge.label }}</span>
       <span class="badge bi">{{ ultima_alerta_critica.fecha_display }} · {{ ultima_alerta_critica.hora_display }}</span>
     </div>
     <div style="font-size:18px;font-weight:600;margin-bottom:12px">{{ ultima_alerta_critica.firma }}</div>
@@ -53,7 +54,7 @@
     <!-- ML Metrics Detalladas -->
     {% if ultima_alerta_critica.ml_metrics.accuracy %}
     <div style="background:var(--bg3); border-left:3px solid var(--accent); padding:12px; border-radius:6px; margin-bottom:12px; font-size:12px; line-height:1.6;">
-      <div style="font-weight:600; margin-bottom:6px;">🤖 Análisis de Machine Learning</div>
+      <div style="font-weight:600; margin-bottom:6px;">Analisis de Machine Learning</div>
       <div><strong>Accuracy:</strong> {{ ultima_alerta_critica.ml_metrics.accuracy|floatformat:1 }}% · <strong>F1:</strong> {{ ultima_alerta_critica.ml_metrics.f1|floatformat:1 }}%</div>
       {% if ultima_alerta_critica.ml_metrics.precision %}<div><strong>Precision:</strong> {{ ultima_alerta_critica.ml_metrics.precision|floatformat:1 }}% · <strong>Recall:</strong> {{ ultima_alerta_critica.ml_metrics.recall|floatformat:1 }}%</div>{% endif %}
       {% if ultima_alerta_critica.ml_metrics.dataset_rows %}<div><strong>Muestras:</strong> {{ ultima_alerta_critica.ml_metrics.dataset_rows }} totales · {{ ultima_alerta_critica.ml_metrics.train_rows }} entrenamiento · {{ ultima_alerta_critica.ml_metrics.test_rows }} prueba</div>{% endif %}
@@ -67,7 +68,7 @@
     <!-- OSINT Context -->
     {% if ultima_alerta_critica.osint_context %}
     <div style="background:var(--bg4); padding:10px 12px; border-radius:6px; margin-bottom:12px; font-size:12px; color:var(--muted2);">
-      <strong>🔍 Contexto OSINT:</strong> {{ ultima_alerta_critica.osint_context }}
+      <strong>Contexto OSINT:</strong> {{ ultima_alerta_critica.osint_context }}
     </div>
     {% endif %}
 
@@ -93,12 +94,12 @@
     
     <!-- Recomendación -->
     <div style="background:rgba(77,166,255,0.1); border-left:3px solid var(--accent); padding:10px 12px; border-radius:6px; font-size:12px; margin-bottom:12px;">
-      <div style="font-weight:600; margin-bottom:5px;">💡 Recomendación del Agente</div>
+      <div style="font-weight:600; margin-bottom:5px;">Recomendacion del Agente</div>
       <div>{{ ultima_alerta_critica.recomendacion_display }}</div>
     </div>
     
     {% else %}
-    <div class="empty">No hay alertas criticas recientes para destacar en este momento. ✨ El sistema está funcionando correctamente.</div>
+    <div class="empty">No hay alertas criticas recientes para destacar en este momento. El sistema esta funcionando con normalidad.</div>
     {% endif %}
   </div>
 
@@ -125,16 +126,20 @@
 {% endblock %}
 {% block dashboard_scripts %}
 <script>
-let lastAlertId = {{ ultima_alerta_critica.id|default:"null" }};
+let lastAlertId = {{ latest_alert_id|default:0 }};
 setInterval(() => {
+  if (document.hidden) {
+    return;
+  }
   fetch('{% url "check_alerts" %}')
     .then((response) => response.json())
     .then((data) => {
-      if (data.id && lastAlertId !== data.id) {
+      if (data.id && data.id > lastAlertId) {
+        lastAlertId = data.id;
         location.reload();
       }
     })
     .catch(() => {});
-}, 30000);
+}, 5000);
 </script>
 {% endblock %}

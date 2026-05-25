@@ -3,9 +3,45 @@ from monitoreo.models import SuricataConfig
 import subprocess
 import os
 import ipaddress
+from pathlib import Path
 
 class Command(BaseCommand):
     help = 'Aplica la configuración de Suricata desde la base de datos'
+
+    def detect_active_interfaces(self):
+        interfaces = []
+        try:
+            result = subprocess.run(
+                ['ip', '-o', 'link', 'show', 'up'],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    parts = line.split(':', 2)
+                    if len(parts) >= 2:
+                        name = parts[1].strip().split('@')[0]
+                        if name and name != 'lo':
+                            interfaces.append(name)
+        except Exception:
+            interfaces = []
+
+        if not interfaces:
+            try:
+                net_dir = Path('/sys/class/net')
+                interfaces = [p.name for p in net_dir.iterdir() if p.is_dir() and p.name != 'lo']
+            except Exception:
+                interfaces = []
+
+        return interfaces
+
+    def validate_interfaces(self, interfaces):
+        if not interfaces:
+            return []
+        active = set(self.detect_active_interfaces())
+        return [iface for iface in interfaces if iface in active]
 
     def get_interface_networks(self, interfaces):
         networks = []
@@ -157,11 +193,32 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             config = SuricataConfig.objects.first()
-            if not config or not config.is_active:
-                self.stdout.write(self.style.WARNING('Configuración de Suricata no encontrada o inactiva'))
-                return
+            interfaces = []
 
-            interfaces = config.interface_list
+            if config and config.is_active:
+                interfaces = config.interface_list
+                valid_interfaces = self.validate_interfaces(interfaces)
+                if valid_interfaces:
+                    interfaces = valid_interfaces
+                else:
+                    detected = self.detect_active_interfaces()
+                    if detected:
+                        self.stdout.write(self.style.WARNING('Las interfaces configuradas no son válidas en este equipo. Se usarán interfaces detectadas: ' + ', '.join(detected)))
+                        interfaces = detected
+                    else:
+                        self.stdout.write(self.style.ERROR('No se pudieron detectar interfaces de red activas. Revisa la configuración en el dashboard.'))
+                        return
+            else:
+                if config and not config.is_active:
+                    self.stdout.write(self.style.WARNING('Configuración de Suricata inactiva. Activa el monitoreo en el dashboard.'))
+                    return
+                detected = self.detect_active_interfaces()
+                if not detected:
+                    self.stdout.write(self.style.ERROR('No se encontraron interfaces de red activas. Revisa la configuración del equipo.'))
+                    return
+                self.stdout.write(self.style.WARNING('No hay configuración de Suricata activa. Se usarán interfaces detectadas: ' + ', '.join(detected)))
+                interfaces = detected
+
             self.stdout.write(f'Aplicando configuración para interfaces: {interfaces}')
 
             config_path = '/etc/suricata/suricata.yaml'
